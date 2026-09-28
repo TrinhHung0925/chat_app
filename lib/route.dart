@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import 'model/post_model.dart';
 import 'screen/home/home_view.dart';
 import 'screen/login/login_view.dart';
+import 'screen/post_detail/post_detail_view.dart';
+import 'screen/post_editor/post_editor_view.dart';
 import 'screen/profile/profile_view.dart';
 import 'screen/register/register_view.dart';
+import 'screen/search_user/search_user_view.dart';
 import 'screen/splash/splash_view.dart';
+import 'screen/user_profile/user_profile_view.dart';
 
 Route<dynamic> generateRoute(RouteSettings settings) {
   GetPageRoute page(
@@ -22,6 +27,10 @@ Route<dynamic> generateRoute(RouteSettings settings) {
     return PageRedirect(route: page, unknownRoute: page).page();
   }
 
+  // Screens that can be open more than once at the same time get a unique controller tag.
+  // It is created here, once per navigation, not inside the page builder.
+  final tag = DateTime.now().microsecondsSinceEpoch.toString();
+
   switch (settings.name) {
     case "/splash":
       return page(settings, () => SplashView());
@@ -33,6 +42,23 @@ Route<dynamic> generateRoute(RouteSettings settings) {
       return page(settings, () => HomeView());
     case "/profile":
       return page(settings, () => ProfileView());
+    case "/userProfile":
+      return page(
+        settings,
+        () => UserProfileView(userId: settings.arguments as String, tag: tag),
+      );
+    case "/searchUser":
+      return page(settings, () => SearchUserView());
+    case "/postEditor":
+      return page(
+        settings,
+        () => PostEditorView(post: settings.arguments as PostModel?),
+      );
+    case "/postDetail":
+      return page(
+        settings,
+        () => PostDetailView(post: settings.arguments as PostModel, tag: tag),
+      );
 
     default:
       return page(
@@ -45,7 +71,17 @@ Route<dynamic> generateRoute(RouteSettings settings) {
   }
 }
 
-enum AppPage { splash, login, register, home, profile }
+enum AppPage {
+  splash,
+  login,
+  register,
+  home,
+  profile,
+  userProfile,
+  searchUser,
+  postEditor,
+  postDetail,
+}
 
 extension AppPageExtension on AppPage {
   String get routeName {
@@ -60,6 +96,14 @@ extension AppPageExtension on AppPage {
         return '/${AppPage.home.name}';
       case AppPage.profile:
         return '/${AppPage.profile.name}';
+      case AppPage.userProfile:
+        return '/${AppPage.userProfile.name}';
+      case AppPage.searchUser:
+        return '/${AppPage.searchUser.name}';
+      case AppPage.postEditor:
+        return '/${AppPage.postEditor.name}';
+      case AppPage.postDetail:
+        return '/${AppPage.postDetail.name}';
     }
   }
 }

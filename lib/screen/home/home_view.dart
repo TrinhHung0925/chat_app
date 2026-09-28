@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 
-import '../../resource/app_colors.dart';
-import '../../resource/app_text.dart';
+import '../../service/local_service.dart';
+import '../feed/feed_view.dart';
+import '../friends/friends_view.dart';
+import '../user_profile/user_profile_view.dart';
 import 'home_controller.dart';
 
 class HomeView extends StatefulWidget {
@@ -20,6 +21,16 @@ class HomeView extends StatefulWidget {
 class _HomeViewState extends State<HomeView> {
   var controller = Get.find<HomeController>();
 
+  // Built once and kept alive by the IndexedStack, so switching tabs keeps scroll positions.
+  late final List<Widget> _tabs = [
+    FeedView(),
+    FriendsView(),
+    UserProfileView(
+      userId: LocalService.user!.id,
+      tag: HomeController.meTabTag,
+    ),
+  ];
+
   @override
   void dispose() {
     Get.delete<HomeController>();
@@ -28,27 +39,31 @@ class _HomeViewState extends State<HomeView> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: Text('Chat App', style: AppText.bold(size: 18)),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.account_circle),
-            onPressed: controller.openProfile,
-          ),
-        ],
-      ),
-      body: Center(
-        child: Obx(
-          () => Text(
-            'Xin chào, ${controller.user.value?.displayName ?? ''}',
-            style: AppText.medium(size: 18),
-            textAlign: TextAlign.center,
-          ),
+    return Obx(
+      () => Scaffold(
+        body: IndexedStack(index: controller.currentTab.value, children: _tabs),
+        bottomNavigationBar: NavigationBar(
+          selectedIndex: controller.currentTab.value,
+          onDestinationSelected: controller.selectTab,
+          destinations: const [
+            NavigationDestination(
+              icon: Icon(Icons.home_outlined),
+              selectedIcon: Icon(Icons.home),
+              label: 'Bảng tin',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.people_outline),
+              selectedIcon: Icon(Icons.people),
+              label: 'Bạn bè',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.person_outline),
+              selectedIcon: Icon(Icons.person),
+              label: 'Tôi',
+            ),
+          ],
         ),
       ),
-      // Room list and chat come in the next phases.
     );
   }
 }

@@ -7,6 +7,7 @@ import '../../service/local_service.dart';
 
 class RegisterController extends GetxController {
   final formKey = GlobalKey<FormState>();
+  final displayNameController = TextEditingController();
   final usernameController = TextEditingController();
   final passwordController = TextEditingController();
   final confirmPasswordController = TextEditingController();
@@ -14,6 +15,7 @@ class RegisterController extends GetxController {
 
   @override
   void onClose() {
+    displayNameController.dispose();
     usernameController.dispose();
     passwordController.dispose();
     confirmPasswordController.dispose();
@@ -28,6 +30,7 @@ class RegisterController extends GetxController {
       final session = await ApiService.register(
         usernameController.text.trim(),
         passwordController.text,
+        displayNameController.text.trim(),
       );
       await LocalService.saveSession(session.accessToken, session.user);
       Get.offAllNamed(AppPage.home.routeName);

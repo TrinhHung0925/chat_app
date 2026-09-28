@@ -43,6 +43,23 @@ class _RegisterViewState extends State<RegisterView> {
               children: [
                 SizedBox(height: 24.h),
                 AppTextField(
+                  controller: controller.displayNameController,
+                  label: 'Tên hiển thị',
+                  validator: Validators.displayName,
+                ),
+                SizedBox(height: 6.h),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Mọi người sẽ thấy tên này. Tên đăng nhập được giữ kín.',
+                    style: AppText.regular(
+                      size: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+                SizedBox(height: 16.h),
+                AppTextField(
                   controller: controller.usernameController,
                   label: 'Tên đăng nhập',
                   validator: Validators.username,

@@ -33,7 +33,9 @@ class _ProfileViewState extends State<ProfileView> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(title: Text('Hồ sơ', style: AppText.bold(size: 18))),
+      appBar: AppBar(
+        title: Text('Chỉnh sửa hồ sơ', style: AppText.bold(size: 18)),
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: EdgeInsets.all(24.w),
@@ -58,8 +60,16 @@ class _ProfileViewState extends State<ProfileView> {
                       ),
                       SizedBox(height: 12.h),
                       Text(
-                        '@${user?.username ?? ''}',
-                        style: AppText.regular(color: AppColors.textSecondary),
+                        '@${user?.handle ?? ''}',
+                        style: AppText.medium(color: AppColors.textSecondary),
+                      ),
+                      SizedBox(height: 4.h),
+                      Text(
+                        'Tên đăng nhập: ${user?.username ?? ''} (chỉ mình bạn thấy)',
+                        style: AppText.regular(
+                          size: 12,
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                     ],
                   );
@@ -69,15 +79,21 @@ class _ProfileViewState extends State<ProfileView> {
                   controller: controller.displayNameController,
                   label: 'Tên hiển thị',
                   validator: Validators.displayName,
+                ),
+                SizedBox(height: 16.h),
+                AppTextField(
+                  controller: controller.handleController,
+                  label: 'Mã của bạn (để người khác tìm)',
+                  validator: Validators.handle,
                   textInputAction: TextInputAction.done,
-                  onSubmitted: (_) => controller.saveDisplayName(),
+                  onSubmitted: (_) => controller.saveProfile(),
                 ),
                 SizedBox(height: 16.h),
                 Obx(
                   () => AppButton(
-                    text: 'Lưu tên',
+                    text: 'Lưu',
                     isLoading: controller.isSaving.value,
-                    onPressed: controller.saveDisplayName,
+                    onPressed: controller.saveProfile,
                   ),
                 ),
                 SizedBox(height: 32.h),

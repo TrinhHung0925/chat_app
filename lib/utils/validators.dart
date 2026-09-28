@@ -21,6 +21,21 @@ abstract class Validators {
         value == password() ? null : 'Mật khẩu xác nhận không khớp';
   }
 
+  static final RegExp _handle = RegExp(r'^(?!\.)[a-z0-9_.]{3,24}(?<!\.)$');
+
+  /// Accepts "@Binh.Tran" and returns "binh.tran", the form the backend stores.
+  static String normalizeHandle(String value) =>
+      value.trim().replaceFirst(RegExp('^@'), '').toLowerCase();
+
+  static String? handle(String? value) {
+    final text = normalizeHandle(value ?? '');
+    if (text.isEmpty) return 'Vui lòng nhập mã';
+    if (!_handle.hasMatch(text)) {
+      return '3-24 ký tự: chữ, số, _ hoặc . (không bắt đầu/kết thúc bằng .)';
+    }
+    return null;
+  }
+
   static String? displayName(String? value) {
     final text = value?.trim() ?? '';
     if (text.isEmpty) return 'Vui lòng nhập tên hiển thị';

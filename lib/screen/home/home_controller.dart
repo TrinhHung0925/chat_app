@@ -1,11 +1,16 @@
 import 'package:get/get.dart';
 
 import '../../model/user_model.dart';
-import '../../route.dart';
 import '../../service/api_service.dart';
 import '../../service/local_service.dart';
+import '../feed/feed_controller.dart';
+import '../friends/friends_controller.dart';
+import '../user_profile/user_profile_controller.dart';
 
 class HomeController extends GetxController {
+  static const meTabTag = 'me-tab';
+
+  final currentTab = 0.obs;
   final user = Rxn<UserModel>(LocalService.user);
 
   @override
@@ -20,13 +25,22 @@ class HomeController extends GetxController {
       user.value = me;
       await LocalService.saveUser(me);
     } on ApiException {
-      // Keep showing the cached user; a 401 is already handled by the Dio interceptor.
+      // Keep the cached user; a 401 is already handled by the Dio interceptor.
     }
   }
 
-  Future<void> openProfile() async {
-    await Get.toNamed(AppPage.profile.routeName);
-    user.value = LocalService.user;
+  /// Each tab reloads when it is opened, so e.g. a post written in the feed shows on "Tôi".
+  void selectTab(int index) {
+    if (index == currentTab.value) return;
+    currentTab.value = index;
+    switch (index) {
+      case 0:
+        Get.find<FeedController>().refreshFeed();
+      case 1:
+        Get.find<FriendsController>().load();
+      case 2:
+        Get.find<UserProfileController>(tag: meTabTag).load();
+    }
   }
 
   void onBack() {

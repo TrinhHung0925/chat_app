@@ -23,11 +23,19 @@ class LocalService {
 
   static String? get accessToken => read<String>(keyAccessToken);
 
-  static bool get isLoggedIn => accessToken?.isNotEmpty ?? false;
+  /// Needs both a token and a readable saved user; Home builds the "Tôi" tab from the user.
+  static bool get isLoggedIn =>
+      (accessToken?.isNotEmpty ?? false) && user != null;
 
   static UserModel? get user {
     final json = read<Map<String, dynamic>>(keyUser);
-    return json == null ? null : UserModel.fromJson(json);
+    if (json == null) return null;
+    try {
+      return UserModel.fromJson(json);
+    } catch (_) {
+      // Saved by an older app version with a different shape: treat as signed out.
+      return null;
+    }
   }
 
   static Future<void> saveSession(String accessToken, UserModel user) async {

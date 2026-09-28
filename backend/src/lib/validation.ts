@@ -18,3 +18,12 @@ export function normalizeDisplayName(value: unknown): string | null {
   const name = value.trim();
   return name.length > 0 && name.length <= DISPLAY_NAME_MAX_LENGTH ? name : null;
 }
+
+export const POST_MAX_LENGTH = 2000;
+export const COMMENT_MAX_LENGTH = 1000;
+
+export function normalizeText(value: unknown, maxLength: number): string | null {
+  if (typeof value !== 'string') return null;
+  const text = value.trim();
+  return text.length > 0 && text.length <= maxLength ? text : null;
+}
