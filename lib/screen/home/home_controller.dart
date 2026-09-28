@@ -7,6 +7,7 @@ import '../../model/user_model.dart';
 import '../../service/api_service.dart';
 import '../../service/local_service.dart';
 import '../../service/realtime_service.dart';
+import '../chat_list/chat_list_controller.dart';
 import '../feed/feed_controller.dart';
 import '../friends/friends_controller.dart';
 import '../user_profile/user_profile_controller.dart';
@@ -63,8 +64,10 @@ class HomeController extends GetxController {
       case 0:
         Get.find<FeedController>().refreshFeed();
       case 1:
-        Get.find<FriendsController>().load();
+        Get.find<ChatListController>().load();
       case 2:
+        Get.find<FriendsController>().load();
+      case 3:
         Get.find<UserProfileController>(tag: meTabTag).load();
     }
   }

@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 
 import '../../service/local_service.dart';
 import '../friends/friends_controller.dart';
+import '../chat_list/chat_list_view.dart';
 import '../feed/feed_view.dart';
 import '../friends/friends_view.dart';
 import '../user_profile/user_profile_view.dart';
@@ -25,6 +26,7 @@ class _HomeViewState extends State<HomeView> {
   // Built once and kept alive by the IndexedStack, so switching tabs keeps scroll positions.
   late final List<Widget> _tabs = [
     FeedView(),
+    ChatListView(),
     FriendsView(),
     UserProfileView(
       userId: LocalService.user!.id,
@@ -51,6 +53,11 @@ class _HomeViewState extends State<HomeView> {
               icon: Icon(Icons.home_outlined),
               selectedIcon: Icon(Icons.home),
               label: 'Bảng tin',
+            ),
+            const NavigationDestination(
+              icon: Icon(Icons.chat_bubble_outline),
+              selectedIcon: Icon(Icons.chat_bubble),
+              label: 'Chat',
             ),
             NavigationDestination(
               icon: _friendsIcon(Icons.people_outline),
