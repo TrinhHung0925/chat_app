@@ -31,41 +31,24 @@ class _HomeViewState extends State<HomeView> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: Text('Home', style: AppText.bold(size: 18)),
+        title: Text('Chat App', style: AppText.bold(size: 18)),
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: controller.logout,
+            icon: const Icon(Icons.account_circle),
+            onPressed: controller.openProfile,
           ),
         ],
       ),
       body: Center(
-        child: Obx(() {
-          final user = controller.user.value;
-          if (user == null) return const CircularProgressIndicator();
-          return Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircleAvatar(
-                radius: 40.r,
-                backgroundImage: user.avatarUrl != null
-                    ? NetworkImage(user.avatarUrl!)
-                    : null,
-                child: user.avatarUrl == null
-                    ? Icon(Icons.person, size: 40.r)
-                    : null,
-              ),
-              SizedBox(height: 12.h),
-              Text(user.name, style: AppText.bold(size: 18)),
-              SizedBox(height: 4.h),
-              Text(
-                user.email,
-                style: AppText.regular(color: AppColors.textSecondary),
-              ),
-            ],
-          );
-        }),
+        child: Obx(
+          () => Text(
+            'Xin chào, ${controller.user.value?.displayName ?? ''}',
+            style: AppText.medium(size: 18),
+            textAlign: TextAlign.center,
+          ),
+        ),
       ),
+      // Room list and chat come in the next phases.
     );
   }
 }

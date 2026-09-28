@@ -3,7 +3,6 @@ import 'package:get/get.dart';
 import '../../model/user_model.dart';
 import '../../route.dart';
 import '../../service/api_service.dart';
-import '../../service/auth_service.dart';
 import '../../service/local_service.dart';
 
 class HomeController extends GetxController {
@@ -25,10 +24,9 @@ class HomeController extends GetxController {
     }
   }
 
-  Future<void> logout() async {
-    await AuthService.signOut();
-    await LocalService.logout();
-    Get.offAllNamed(AppPage.login.routeName);
+  Future<void> openProfile() async {
+    await Get.toNamed(AppPage.profile.routeName);
+    user.value = LocalService.user;
   }
 
   void onBack() {

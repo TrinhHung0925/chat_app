@@ -1,41 +1,53 @@
 import { Hono } from 'hono';
 
-import { verifyGoogleIdToken } from '../lib/google';
+import { hashPassword, verifyPassword } from '../lib/password';
 import { createAccessToken } from '../lib/token';
+import { toPublicUser } from '../lib/user';
+import { isValidPassword, normalizeUsername } from '../lib/validation';
 import type { AppEnv, UserRow } from '../types';
-import { toPublicUser } from './users';
 
 export const authRoutes = new Hono<AppEnv>();
 
-authRoutes.post('/google', async (c) => {
-  const body = await c.req.json<{ idToken?: string }>().catch(() => ({ idToken: undefined }));
-  if (!body.idToken) return c.json({ error: 'missing_id_token' }, 400);
+type Credentials = { username?: unknown; password?: unknown };
 
-  const clientIds = c.env.GOOGLE_CLIENT_IDS.split(',').map((id) => id.trim()).filter(Boolean);
-  let profile;
-  try {
-    profile = await verifyGoogleIdToken(body.idToken, clientIds);
-  } catch (e) {
-    console.warn('Google idToken rejected', e instanceof Error ? e.message : e);
-    return c.json({ error: 'invalid_id_token' }, 401);
-  }
+authRoutes.post('/register', async (c) => {
+  const body = await c.req.json<Credentials>().catch((): Credentials => ({}));
+  const username = normalizeUsername(body.username);
+  if (!username) return c.json({ error: 'invalid_username' }, 400);
+  if (!isValidPassword(body.password)) return c.json({ error: 'invalid_password' }, 400);
 
   const now = Date.now();
-  // Upsert keyed on google_sub: the first login creates the user, later logins refresh the profile.
+  // The display name starts as the username; the user can change it on the profile screen.
+  // ON CONFLICT DO NOTHING + RETURNING gives no row when the username is taken, without a race
+  // between "check if exists" and "insert".
   const user = await c.env.DB.prepare(
-    `INSERT INTO users (id, google_sub, email, name, avatar_url, created_at, updated_at)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?6)
-     ON CONFLICT (google_sub) DO UPDATE SET
-       email = excluded.email,
-       name = excluded.name,
-       avatar_url = excluded.avatar_url,
-       updated_at = excluded.updated_at
+    `INSERT INTO users (id, username, password_hash, display_name, created_at, updated_at)
+     VALUES (?1, ?2, ?3, ?2, ?4, ?4)
+     ON CONFLICT (username) DO NOTHING
      RETURNING *`,
   )
-    .bind(crypto.randomUUID(), profile.sub, profile.email, profile.name, profile.picture, now)
+    .bind(crypto.randomUUID(), username, await hashPassword(body.password), now)
     .first<UserRow>();
 
-  if (!user) return c.json({ error: 'user_upsert_failed' }, 500);
+  if (!user) return c.json({ error: 'username_taken' }, 409);
+
+  const accessToken = await createAccessToken(user.id, c.env.JWT_SECRET);
+  return c.json({ accessToken, user: toPublicUser(user) }, 201);
+});
+
+authRoutes.post('/login', async (c) => {
+  const body = await c.req.json<Credentials>().catch((): Credentials => ({}));
+  const username = normalizeUsername(body.username);
+  const password = typeof body.password === 'string' ? body.password : '';
+
+  const user = username
+    ? await c.env.DB.prepare('SELECT * FROM users WHERE username = ?1').bind(username).first<UserRow>()
+    : null;
+
+  // Same error for "no such user" and "wrong password", so the API does not reveal which usernames exist.
+  if (!user || !(await verifyPassword(password, user.password_hash))) {
+    return c.json({ error: 'invalid_credentials' }, 401);
+  }
 
   const accessToken = await createAccessToken(user.id, c.env.JWT_SECRET);
   return c.json({ accessToken, user: toPublicUser(user) });

@@ -3,6 +3,8 @@ import 'package:get/get.dart';
 
 import 'screen/home/home_view.dart';
 import 'screen/login/login_view.dart';
+import 'screen/profile/profile_view.dart';
+import 'screen/register/register_view.dart';
 import 'screen/splash/splash_view.dart';
 
 Route<dynamic> generateRoute(RouteSettings settings) {
@@ -25,8 +27,12 @@ Route<dynamic> generateRoute(RouteSettings settings) {
       return page(settings, () => SplashView());
     case "/login":
       return page(settings, () => LoginView());
+    case "/register":
+      return page(settings, () => RegisterView());
     case "/home":
       return page(settings, () => HomeView());
+    case "/profile":
+      return page(settings, () => ProfileView());
 
     default:
       return page(
@@ -39,7 +45,7 @@ Route<dynamic> generateRoute(RouteSettings settings) {
   }
 }
 
-enum AppPage { splash, login, home }
+enum AppPage { splash, login, register, home, profile }
 
 extension AppPageExtension on AppPage {
   String get routeName {
@@ -48,8 +54,12 @@ extension AppPageExtension on AppPage {
         return '/${AppPage.splash.name}';
       case AppPage.login:
         return '/${AppPage.login.name}';
+      case AppPage.register:
+        return '/${AppPage.register.name}';
       case AppPage.home:
         return '/${AppPage.home.name}';
+      case AppPage.profile:
+        return '/${AppPage.profile.name}';
     }
   }
 }

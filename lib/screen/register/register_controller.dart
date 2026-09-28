@@ -5,38 +5,37 @@ import '../../route.dart';
 import '../../service/api_service.dart';
 import '../../service/local_service.dart';
 
-class LoginController extends GetxController {
+class RegisterController extends GetxController {
   final formKey = GlobalKey<FormState>();
   final usernameController = TextEditingController();
   final passwordController = TextEditingController();
+  final confirmPasswordController = TextEditingController();
   final isLoading = false.obs;
 
   @override
   void onClose() {
     usernameController.dispose();
     passwordController.dispose();
+    confirmPasswordController.dispose();
     super.onClose();
   }
 
-  Future<void> login() async {
+  /// "Confirm password" is only checked here; the backend just needs the password once.
+  Future<void> register() async {
     if (isLoading.value || !formKey.currentState!.validate()) return;
     isLoading.value = true;
     try {
-      final session = await ApiService.login(
+      final session = await ApiService.register(
         usernameController.text.trim(),
         passwordController.text,
       );
       await LocalService.saveSession(session.accessToken, session.user);
       Get.offAllNamed(AppPage.home.routeName);
     } on ApiException catch (e) {
-      Get.snackbar('Đăng nhập thất bại', e.message);
+      Get.snackbar('Đăng ký thất bại', e.message);
     } finally {
       isLoading.value = false;
     }
-  }
-
-  void goToRegister() {
-    Get.toNamed(AppPage.register.routeName);
   }
 
   void onBack() {

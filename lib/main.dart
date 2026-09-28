@@ -3,13 +3,11 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 
 import 'route.dart';
-import 'service/auth_service.dart';
 import 'service/local_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await LocalService.init();
-  await AuthService.init();
   runApp(const MyApp());
 }
 

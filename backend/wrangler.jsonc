@@ -6,12 +6,6 @@
   "compatibility_flags": ["nodejs_compat"],
   "observability": { "enabled": true },
 
-  "vars": {
-    // Comma-separated list of OAuth client IDs accepted as the `aud` of a Google idToken.
-    // Flutter passes the Web client ID as serverClientId, so Android and iOS tokens use it too.
-    "GOOGLE_CLIENT_IDS": "984366939036-iko5hvk3cl8tfo5k36qurvs9qrhaof42.apps.googleusercontent.com"
-  },
-
   "d1_databases": [
     {
       "binding": "DB",
