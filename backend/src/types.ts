@@ -1,6 +1,9 @@
+import type { UserHub } from './hub';
+
 export type Bindings = {
   DB: D1Database;
   JWT_SECRET: string;
+  USER_HUB: DurableObjectNamespace<UserHub>;
 };
 
 export type Variables = {

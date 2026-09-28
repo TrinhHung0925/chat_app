@@ -6,6 +6,12 @@
   "compatibility_flags": ["nodejs_compat"],
   "observability": { "enabled": true },
 
+  "durable_objects": {
+    "bindings": [{ "name": "USER_HUB", "class_name": "UserHub" }]
+  },
+  // The Free plan only allows SQLite-backed Durable Objects, hence new_sqlite_classes.
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["UserHub"] }],
+
   "d1_databases": [
     {
       "binding": "DB",

@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 
 import { findFriendship, toRelationship } from '../lib/friendship';
+import { createNotification, removeFriendRequestNotification } from '../lib/notifications';
 import { toPublicUser } from '../lib/user';
 import { requireAuth } from '../middleware/auth';
 import type { AppEnv, FriendshipRow, UserRow } from '../types';
@@ -62,6 +63,8 @@ friendRoutes.post('/requests', async (c) => {
     await c.env.DB.prepare(`UPDATE friendships SET status = 'accepted', responded_at = ?1 WHERE id = ?2`)
       .bind(now, existing.id)
       .run();
+    await removeFriendRequestNotification(c, meId, existing.id);
+    await createNotification(c, { userId: target.id, actorId: meId, type: 'friend_accepted', refId: existing.id });
     return c.json({ relationship: { status: 'friends', requestId: existing.id }, user: toPublicUser(target) });
   }
 
@@ -75,6 +78,8 @@ friendRoutes.post('/requests', async (c) => {
     .bind(crypto.randomUUID(), meId, target.id, now)
     .first<FriendshipRow>();
   if (!row) return c.json({ error: 'request_already_exists' }, 409);
+
+  await createNotification(c, { userId: target.id, actorId: meId, type: 'friend_request', refId: row.id });
 
   return c.json({ relationship: toRelationship(row, meId), user: toPublicUser(target) }, 201);
 });
@@ -90,6 +95,13 @@ friendRoutes.post('/requests/:id/accept', async (c) => {
   await c.env.DB.prepare(`UPDATE friendships SET status = 'accepted', responded_at = ?1 WHERE id = ?2`)
     .bind(Date.now(), request.id)
     .run();
+  await removeFriendRequestNotification(c, request.addressee_id, request.id);
+  await createNotification(c, {
+    userId: request.requester_id,
+    actorId: request.addressee_id,
+    type: 'friend_accepted',
+    refId: request.id,
+  });
   return c.json({ ok: true });
 });
 
@@ -102,6 +114,7 @@ friendRoutes.delete('/requests/:id', async (c) => {
   }
 
   await c.env.DB.prepare('DELETE FROM friendships WHERE id = ?1').bind(request.id).run();
+  await removeFriendRequestNotification(c, request.addressee_id, request.id);
   return c.json({ ok: true });
 });
 
