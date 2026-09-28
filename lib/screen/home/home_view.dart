@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../service/local_service.dart';
+import '../friends/friends_controller.dart';
 import '../feed/feed_view.dart';
 import '../friends/friends_view.dart';
 import '../user_profile/user_profile_view.dart';
@@ -45,18 +46,18 @@ class _HomeViewState extends State<HomeView> {
         bottomNavigationBar: NavigationBar(
           selectedIndex: controller.currentTab.value,
           onDestinationSelected: controller.selectTab,
-          destinations: const [
-            NavigationDestination(
+          destinations: [
+            const NavigationDestination(
               icon: Icon(Icons.home_outlined),
               selectedIcon: Icon(Icons.home),
               label: 'Bảng tin',
             ),
             NavigationDestination(
-              icon: Icon(Icons.people_outline),
-              selectedIcon: Icon(Icons.people),
+              icon: _friendsIcon(Icons.people_outline),
+              selectedIcon: _friendsIcon(Icons.people),
               label: 'Bạn bè',
             ),
-            NavigationDestination(
+            const NavigationDestination(
               icon: Icon(Icons.person_outline),
               selectedIcon: Icon(Icons.person),
               label: 'Tôi',
@@ -64,6 +65,18 @@ class _HomeViewState extends State<HomeView> {
           ],
         ),
       ),
+    );
+  }
+
+  /// The friends tab shows how many requests are waiting.
+  Widget _friendsIcon(IconData icon) {
+    final count = Get.isRegistered<FriendsController>()
+        ? Get.find<FriendsController>().incoming.length
+        : 0;
+    return Badge(
+      isLabelVisible: count > 0,
+      label: Text('$count'),
+      child: Icon(icon),
     );
   }
 }

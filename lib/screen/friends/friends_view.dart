@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 
+import '../../common/notification_bell.dart';
 import '../../common/user_avatar.dart';
 import '../../model/friend_request_model.dart';
 import '../../model/user_model.dart';
@@ -43,6 +44,7 @@ class _FriendsViewState extends State<FriendsView> {
               tooltip: 'Tìm bạn',
               onPressed: controller.openSearch,
             ),
+            const NotificationBell(),
           ],
           bottom: TabBar(
             tabs: [

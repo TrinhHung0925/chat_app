@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 
+import '../../common/notification_bell.dart';
 import '../../common/post_card.dart';
 import '../../common/user_avatar.dart';
 import '../../resource/app_colors.dart';
@@ -33,7 +34,10 @@ class _FeedViewState extends State<FeedView> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF2F3F5),
-      appBar: AppBar(title: Text('Bảng tin', style: AppText.bold(size: 20))),
+      appBar: AppBar(
+        title: Text('Bảng tin', style: AppText.bold(size: 20)),
+        actions: const [NotificationBell()],
+      ),
       body: Obx(() {
         if (controller.isLoading.value) {
           return const Center(child: CircularProgressIndicator());

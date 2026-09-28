@@ -3,6 +3,7 @@ import 'package:get/get.dart' hide Response;
 
 import '../model/comment_model.dart';
 import '../model/friend_request_model.dart';
+import '../model/notification_model.dart';
 import '../model/page_model.dart';
 import '../model/post_model.dart';
 import '../model/relationship_model.dart';
@@ -295,4 +296,26 @@ class ApiService {
 
   static Future<void> deleteComment(String postId, String commentId) =>
       _call(() => _dio.delete('/posts/$postId/comments/$commentId'), (_) {});
+
+  // ---------- Notifications ----------
+
+  static Future<({List<NotificationModel> items, int unreadCount})>
+  getNotifications() => _call(
+    () => _dio.get('/notifications'),
+    (data) => (
+      items: (data['notifications'] as List)
+          .cast<Map<String, dynamic>>()
+          .map(NotificationModel.fromJson)
+          .toList(),
+      unreadCount: data['unreadCount'] as int,
+    ),
+  );
+
+  static Future<int> getUnreadNotificationCount() => _call(
+    () => _dio.get('/notifications/unread-count'),
+    (data) => data['unreadCount'] as int,
+  );
+
+  static Future<void> markAllNotificationsRead() =>
+      _call(() => _dio.post('/notifications/read-all'), (_) {});
 }

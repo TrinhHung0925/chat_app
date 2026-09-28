@@ -1,8 +1,12 @@
+import 'dart:async';
+
 import 'package:get/get.dart';
 
+import '../../model/notification_model.dart';
 import '../../model/user_model.dart';
 import '../../service/api_service.dart';
 import '../../service/local_service.dart';
+import '../../service/realtime_service.dart';
 import '../feed/feed_controller.dart';
 import '../friends/friends_controller.dart';
 import '../user_profile/user_profile_controller.dart';
@@ -12,11 +16,33 @@ class HomeController extends GetxController {
 
   final currentTab = 0.obs;
   final user = Rxn<UserModel>(LocalService.user);
+  StreamSubscription<NotificationModel>? _live;
 
   @override
   void onInit() {
     super.onInit();
     refreshMe();
+    // Home exists exactly while the user is signed in, so the live connection follows it.
+    RealtimeService.instance.start();
+    _live = RealtimeService.instance.notifications.listen(_onNotification);
+  }
+
+  @override
+  void onClose() {
+    _live?.cancel();
+    RealtimeService.instance.stop();
+    super.onClose();
+  }
+
+  /// Refresh what the notification changes, so the friends tab badge and lists are current.
+  void _onNotification(NotificationModel n) {
+    if (Get.isRegistered<FriendsController>()) {
+      Get.find<FriendsController>().load();
+    }
+    if (n.type == NotificationType.friendAccepted &&
+        Get.isRegistered<FeedController>()) {
+      Get.find<FeedController>().refreshFeed();
+    }
   }
 
   Future<void> refreshMe() async {

@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'model/post_model.dart';
 import 'screen/home/home_view.dart';
 import 'screen/login/login_view.dart';
+import 'screen/notifications/notifications_view.dart';
 import 'screen/post_detail/post_detail_view.dart';
 import 'screen/post_editor/post_editor_view.dart';
 import 'screen/profile/profile_view.dart';
@@ -54,6 +55,8 @@ Route<dynamic> generateRoute(RouteSettings settings) {
         settings,
         () => PostEditorView(post: settings.arguments as PostModel?),
       );
+    case "/notifications":
+      return page(settings, () => NotificationsView());
     case "/postDetail":
       return page(
         settings,
@@ -81,6 +84,7 @@ enum AppPage {
   searchUser,
   postEditor,
   postDetail,
+  notifications,
 }
 
 extension AppPageExtension on AppPage {
@@ -104,6 +108,8 @@ extension AppPageExtension on AppPage {
         return '/${AppPage.postEditor.name}';
       case AppPage.postDetail:
         return '/${AppPage.postDetail.name}';
+      case AppPage.notifications:
+        return '/${AppPage.notifications.name}';
     }
   }
 }
