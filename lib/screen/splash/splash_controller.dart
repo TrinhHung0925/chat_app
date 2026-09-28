@@ -1,6 +1,7 @@
 import 'package:get/get.dart';
 
 import '../../route.dart';
+import '../../service/local_service.dart';
 
 class SplashController extends GetxController {
   @override
@@ -12,7 +13,8 @@ class SplashController extends GetxController {
   void onReady() {
     super.onReady();
     Future.delayed(const Duration(seconds: 2), () {
-      Get.offAllNamed(AppPage.home.routeName);
+      final nextPage = LocalService.isLoggedIn ? AppPage.home : AppPage.login;
+      Get.offAllNamed(nextPage.routeName);
     });
   }
 

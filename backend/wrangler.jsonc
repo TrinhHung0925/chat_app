@@ -1,0 +1,23 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "chat-app",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-28",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+
+  "vars": {
+    // Comma-separated list of OAuth client IDs accepted as the `aud` of a Google idToken.
+    // Flutter passes the Web client ID as serverClientId, so Android and iOS tokens use it too.
+    "GOOGLE_CLIENT_IDS": "984366939036-iko5hvk3cl8tfo5k36qurvs9qrhaof42.apps.googleusercontent.com"
+  },
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "chat-app-db",
+      "database_id": "87b8e7e7-36fd-4611-9304-8c60aa004f7d",
+      "migrations_dir": "migrations"
+    }
+  ]
+}

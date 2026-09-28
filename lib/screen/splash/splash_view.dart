@@ -30,7 +30,10 @@ class _SplashViewState extends State<SplashView> {
     return Scaffold(
       backgroundColor: AppColors.primary,
       body: Center(
-        child: Text('Chat App', style: AppText.bold(size: 28, color: AppColors.white)),
+        child: Text(
+          'Chat App',
+          style: AppText.bold(size: 28, color: AppColors.white),
+        ),
       ),
     );
   }
