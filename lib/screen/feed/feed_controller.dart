@@ -23,8 +23,8 @@ class FeedController extends GetxController with PostListMixin {
       final page = await ApiService.getFeed();
       posts.assignAll(page.items);
       _nextBefore = page.nextBefore;
-    } on ApiException catch (e) {
-      Get.snackbar('Lỗi', e.message);
+    } catch (e) {
+      Get.snackbar('Lỗi', e.toString());
     } finally {
       isLoading.value = false;
     }
@@ -37,8 +37,8 @@ class FeedController extends GetxController with PostListMixin {
       final page = await ApiService.getFeed(before: _nextBefore);
       posts.addAll(page.items);
       _nextBefore = page.nextBefore;
-    } on ApiException catch (e) {
-      Get.snackbar('Lỗi', e.message);
+    } catch (e) {
+      Get.snackbar('Lỗi', e.toString());
     } finally {
       isLoadingMore.value = false;
     }

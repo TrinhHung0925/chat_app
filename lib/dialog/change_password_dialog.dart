@@ -43,8 +43,8 @@ class _ChangePasswordDialogState extends State<ChangePasswordDialog> {
         _newController.text,
       );
       Get.back(result: true);
-    } on ApiException catch (e) {
-      setState(() => _error = e.message);
+    } catch (e) {
+      setState(() => _error = e.toString());
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

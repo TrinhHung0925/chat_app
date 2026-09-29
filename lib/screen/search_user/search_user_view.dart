@@ -58,7 +58,7 @@ class _SearchUserViewState extends State<SearchUserView> {
         }
         return ListView.separated(
           itemCount: controller.results.length,
-          separatorBuilder: (_, _) => const Divider(height: 1),
+          separatorBuilder: (_, index) => const Divider(height: 1),
           itemBuilder: (context, index) {
             final item = controller.results[index];
             return ListTile(

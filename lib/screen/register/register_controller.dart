@@ -34,8 +34,8 @@ class RegisterController extends GetxController {
       );
       await LocalService.saveSession(session.accessToken, session.user);
       Get.offAllNamed(AppPage.home.routeName);
-    } on ApiException catch (e) {
-      Get.snackbar('Đăng ký thất bại', e.message);
+    } catch (e) {
+      Get.snackbar('Đăng ký thất bại', e.toString());
     } finally {
       isLoading.value = false;
     }

@@ -55,8 +55,8 @@ abstract class RelationshipActions {
   ) async {
     try {
       return await action();
-    } on ApiException catch (e) {
-      Get.snackbar('Lỗi', e.message);
+    } catch (e) {
+      Get.snackbar('Lỗi', e.toString());
       return null;
     }
   }
