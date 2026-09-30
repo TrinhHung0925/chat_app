@@ -1,8 +1,53 @@
+import 'dart:async';
+
 import 'package:get/get.dart';
 
-/// The chat tab. Empty for now: the room list and chat are the next thing to build.
+import '../../model/conversation_model.dart';
+import '../../route.dart';
+import '../../service/api_service.dart';
+import '../../service/local_service.dart';
+import '../../service/realtime_service.dart';
+
 class ChatListController extends GetxController {
-  Future<void> load() async {}
+  final conversations = <ConversationModel>[].obs;
+  final isLoading = true.obs;
+  StreamSubscription<String>? _live;
+
+  String? get meId => LocalService.user?.id;
+
+  // Tổng số tin chưa đọc, hiện thành số đỏ trên tab Chat.
+  int get totalUnread => conversations.fold(0, (sum, c) => sum + c.unreadCount);
+
+  @override
+  void onInit() {
+    super.onInit();
+    load();
+    // Có tin mới ở bất kỳ cuộc trò chuyện nào thì tải lại danh sách
+    // (để tin cuối, thứ tự và số chưa đọc luôn đúng).
+    _live = RealtimeService.instance.chatUpdates.listen((_) => load());
+  }
+
+  @override
+  void onClose() {
+    _live?.cancel();
+    super.onClose();
+  }
+
+  Future<void> load() async {
+    try {
+      conversations.assignAll(await ApiService.getConversations());
+    } on ApiException catch (e) {
+      Get.snackbar('Lỗi', e.message);
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  Future<void> open(ConversationModel c) async {
+    await Get.toNamed(AppPage.chat.routeName, arguments: c.other);
+    // Quay lại từ màn chat: tải lại để số chưa đọc về 0 và tin cuối được cập nhật.
+    await load();
+  }
 
   void onBack() {
     Get.back();

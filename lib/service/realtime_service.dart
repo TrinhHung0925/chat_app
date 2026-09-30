@@ -23,6 +23,11 @@ class RealtimeService with WidgetsBindingObserver {
   /// New notifications as they arrive, for screens that want to refresh.
   Stream<NotificationModel> get notifications => _notifications.stream;
 
+  // Có tin nhắn mới ở một cuộc trò chuyện (id phòng). Tab Chat nghe để tải lại danh sách.
+  final _chatUpdates = StreamController<String>.broadcast();
+
+  Stream<String> get chatUpdates => _chatUpdates.stream;
+
   IOWebSocketChannel? _channel;
   StreamSubscription<dynamic>? _subscription;
   Timer? _retryTimer;
@@ -71,7 +76,8 @@ class RealtimeService with WidgetsBindingObserver {
     final token = LocalService.accessToken;
     if (!_running || token == null) return;
 
-    final uri = Uri.parse('${AppConfig.apiBaseUrl.replaceFirst('http', 'ws')}/ws');
+    final uri =
+        Uri.parse('${AppConfig.apiBaseUrl.replaceFirst('http', 'ws')}/ws');
     final channel = IOWebSocketChannel.connect(
       uri,
       headers: {'Authorization': 'Bearer $token'},
@@ -87,7 +93,8 @@ class RealtimeService with WidgetsBindingObserver {
     }
     if (_channel != channel) return;
     _attempt = 0;
-    _subscription = channel.stream.listen(_onMessage, onDone: _scheduleRetry, onError: (_) => _scheduleRetry());
+    _subscription = channel.stream.listen(_onMessage,
+        onDone: _scheduleRetry, onError: (_) => _scheduleRetry());
   }
 
   /// Waits 1, 2, 4 … up to 30 seconds between attempts, so a server outage is not hammered.
@@ -118,8 +125,15 @@ class RealtimeService with WidgetsBindingObserver {
     final count = message['unreadCount'];
     if (count is int) unreadCount.value = count;
 
+    // ChatRoom báo qua UserHub khi có tin nhắn mới cho mình.
+    if (message['event'] == 'chat_message') {
+      _chatUpdates.add(message['conversationId'] as String);
+      return;
+    }
+
     if (message['event'] == 'notification') {
-      final notification = NotificationModel.fromJson(message['notification'] as Map<String, dynamic>);
+      final notification = NotificationModel.fromJson(
+          message['notification'] as Map<String, dynamic>);
       _notifications.add(notification);
       _showBanner(notification);
     }

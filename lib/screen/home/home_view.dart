@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 
 import '../../service/local_service.dart';
 import '../friends/friends_controller.dart';
+import '../chat_list/chat_list_controller.dart';
 import '../chat_list/chat_list_view.dart';
 import '../feed/feed_view.dart';
 import '../friends/friends_view.dart';
@@ -54,9 +55,9 @@ class _HomeViewState extends State<HomeView> {
               selectedIcon: Icon(Icons.home),
               label: 'Bảng tin',
             ),
-            const NavigationDestination(
-              icon: Icon(Icons.chat_bubble_outline),
-              selectedIcon: Icon(Icons.chat_bubble),
+            NavigationDestination(
+              icon: _chatIcon(Icons.chat_bubble_outline),
+              selectedIcon: _chatIcon(Icons.chat_bubble),
               label: 'Chat',
             ),
             NavigationDestination(
@@ -76,6 +77,18 @@ class _HomeViewState extends State<HomeView> {
   }
 
   /// The friends tab shows how many requests are waiting.
+  // Tab Chat hiện tổng số tin chưa đọc.
+  Widget _chatIcon(IconData icon) {
+    final count = Get.isRegistered<ChatListController>()
+        ? Get.find<ChatListController>().totalUnread
+        : 0;
+    return Badge(
+      isLabelVisible: count > 0,
+      label: Text('$count'),
+      child: Icon(icon),
+    );
+  }
+
   Widget _friendsIcon(IconData icon) {
     final count = Get.isRegistered<FriendsController>()
         ? Get.find<FriendsController>().incoming.length

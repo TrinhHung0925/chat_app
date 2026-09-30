@@ -13,7 +13,7 @@ import type { Bindings } from './types';
  */
 
 /** Thông tin gắn vào từng WebSocket để biết đường dây này là của ai. */
-type Member = { userId: string; displayName: string };
+type Member = { userId: string; displayName: string; roomId: string };
 
 /** App gửi lên. */
 // App gửi lên 2 loại sự kiện, phân biệt bằng `type`:
@@ -53,6 +53,7 @@ export class ChatRoom extends DurableObject<Bindings> {
       userId: request.headers.get('X-User-Id')!,
       // Tên có dấu tiếng Việt nên được mã hóa khi đặt vào header; giải mã lại ở đây.
       displayName: decodeURIComponent(request.headers.get('X-User-Name')!),
+      roomId: request.headers.get('X-Room-Id')!,
     };
 
     // Tạo một đường dây có 2 đầu: `client` trả về cho app, `server` phòng giữ lại.
@@ -122,6 +123,47 @@ export class ChatRoom extends DurableObject<Bindings> {
       // 2. Rồi mới phát cho TẤT CẢ mọi người trong phòng, kể cả người gửi.
       // Người gửi nhận lại tin của chính mình nghĩa là "server đã nhận và đã lưu".
       this.broadcast({ type: 'message', message });
+
+      // 3. Cập nhật danh sách chat (D1) và báo cho người không mở phòng.
+      //    waitUntil: làm tiếp sau khi đã phát tin, không bắt người gửi phải chờ.
+      this.ctx.waitUntil(this.updateConversation(sender, message));
+    }
+  }
+
+  /**
+   * Ghi "tin cuối" vào bảng conversations. Người nào KHÔNG đang mở phòng thì cộng 1 tin chưa đọc
+   * và báo qua UserHub của họ, để tab Chat của họ tự cập nhật. Người đang mở phòng đã thấy tin
+   * ngay trên màn chat rồi, nên không tính là chưa đọc.
+   */
+  private async updateConversation(
+    sender: Member,
+    message: { senderId: string; senderName: string; text: string; createdAt: number },
+  ) {
+    const online = new Set(this.ctx.getWebSockets().map((ws) => (ws.deserializeAttachment() as Member).userId));
+    const db = this.env.DB;
+
+    await db
+      .prepare('UPDATE conversations SET last_message_text = ?1, last_sender_id = ?2, last_message_at = ?3 WHERE id = ?4')
+      .bind(message.text, message.senderId, message.createdAt, sender.roomId)
+      .run();
+
+    const { results: members } = await db
+      .prepare('SELECT user_id FROM conversation_members WHERE conversation_id = ?1')
+      .bind(sender.roomId)
+      .all<{ user_id: string }>();
+
+    for (const { user_id } of members) {
+      if (user_id === sender.userId) continue;
+      if (!online.has(user_id)) {
+        await db
+          .prepare('UPDATE conversation_members SET unread_count = unread_count + 1 WHERE conversation_id = ?1 AND user_id = ?2')
+          .bind(sender.roomId, user_id)
+          .run();
+      }
+      // Báo cho mọi thiết bị đang mở app của người này (tab Chat tự tải lại).
+      await this.env.USER_HUB.get(this.env.USER_HUB.idFromName(user_id))
+        .send({ event: 'chat_message', conversationId: sender.roomId, senderName: message.senderName, text: message.text })
+        .catch(() => {});
     }
   }
 

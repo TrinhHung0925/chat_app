@@ -1,9 +1,9 @@
 import { Hono } from 'hono';
 
 import { areFriends } from '../lib/friendship';
-import { findUserById } from '../lib/user';
+import { findUserById, toPublicUser } from '../lib/user';
 import { requireAuth } from '../middleware/auth';
-import type { AppEnv } from '../types';
+import type { AppEnv, UserRow } from '../types';
 
 export const chatRoutes = new Hono<AppEnv>();
 
@@ -31,13 +31,69 @@ chatRoutes.get('/direct/:userId/ws', async (c) => {
   const me = await findUserById(c.env.DB, meId);
   if (!me) return c.json({ error: 'user_not_found' }, 404);
 
+  const roomId = directRoomName(meId, otherId);
+
+  // Ghi cuộc trò chuyện vào bảng tổng hợp (lần đầu mở thì tạo mới, đã có thì bỏ qua),
+  // và đặt số chưa đọc của mình về 0 vì mình đang mở phòng ra xem.
+  await c.env.DB.batch([
+    c.env.DB.prepare(
+      `INSERT INTO conversations (id, type, created_at) VALUES (?1, 'direct', ?2) ON CONFLICT DO NOTHING`,
+    ).bind(roomId, Date.now()),
+    c.env.DB.prepare(
+      `INSERT INTO conversation_members (conversation_id, user_id) VALUES (?1, ?2), (?1, ?3) ON CONFLICT DO NOTHING`,
+    ).bind(roomId, meId, otherId),
+    c.env.DB.prepare(
+      'UPDATE conversation_members SET unread_count = 0 WHERE conversation_id = ?1 AND user_id = ?2',
+    ).bind(roomId, meId),
+  ]);
+
   // Tìm (hoặc tự tạo) Durable Object của phòng này theo tên phòng.
-  const room = c.env.CHAT_ROOM.get(c.env.CHAT_ROOM.idFromName(directRoomName(meId, otherId)));
+  const room = c.env.CHAT_ROOM.get(c.env.CHAT_ROOM.idFromName(roomId));
 
   // Chuyển WebSocket vào phòng, kèm theo người này là ai. Mình tạo request mới và tự đặt header,
   // nên app không thể tự khai man X-User-Id: header app gửi lên (nếu có) bị ghi đè ở đây.
   const headers = new Headers(c.req.raw.headers);
   headers.set('X-User-Id', me.id);
   headers.set('X-User-Name', encodeURIComponent(me.display_name));
+  headers.set('X-Room-Id', roomId);
   return room.fetch(new Request(c.req.raw, { headers }));
+});
+
+type ConversationRow = {
+  id: string;
+  last_message_text: string | null;
+  last_sender_id: string | null;
+  last_message_at: number | null;
+  unread_count: number;
+} & Pick<UserRow, 'handle' | 'display_name'> & { other_id: string; other_created_at: number };
+
+// Danh sách chat của tôi: người đang chat cùng, tin cuối, số chưa đọc; mới nhất lên đầu.
+// Chỉ lấy cuộc trò chuyện đã có ít nhất 1 tin (mở phòng rồi thoát mà không nhắn thì không hiện).
+chatRoutes.get('/conversations', async (c) => {
+  const { results } = await c.env.DB.prepare(
+    `SELECT conv.id, conv.last_message_text, conv.last_sender_id, conv.last_message_at,
+            mine.unread_count,
+            u.id AS other_id, u.handle, u.display_name, u.created_at AS other_created_at
+     FROM conversation_members mine
+     JOIN conversations conv ON conv.id = mine.conversation_id
+     JOIN conversation_members other
+       ON other.conversation_id = conv.id AND other.user_id <> mine.user_id
+     JOIN users u ON u.id = other.user_id
+     WHERE mine.user_id = ?1 AND conv.last_message_at IS NOT NULL
+     ORDER BY conv.last_message_at DESC
+     LIMIT 100`,
+  )
+    .bind(c.get('userId'))
+    .all<ConversationRow>();
+
+  return c.json({
+    conversations: results.map((r) => ({
+      id: r.id,
+      other: toPublicUser({ id: r.other_id, handle: r.handle, display_name: r.display_name, created_at: r.other_created_at } as UserRow),
+      lastMessageText: r.last_message_text,
+      lastSenderId: r.last_sender_id,
+      lastMessageAt: r.last_message_at,
+      unreadCount: r.unread_count,
+    })),
+  });
 });
