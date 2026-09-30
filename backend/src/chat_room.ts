@@ -1,5 +1,6 @@
 import { DurableObject } from 'cloudflare:workers';
 
+import { sendPushToUser } from './lib/fcm';
 import type { Bindings } from './types';
 
 /**
@@ -20,7 +21,12 @@ type Member = { userId: string; displayName: string; roomId: string };
 //  - "message": tin nhắn thật, phát cho cả phòng.
 //  - "typing": đang gõ (isTyping = true) hoặc đã thôi gõ (false). Chỉ báo cho người KHÁC,
 //    không lưu lại, vì vài giây sau nó đã hết ý nghĩa.
-type ClientEvent = { type: 'message'; text: string } | { type: 'typing'; isTyping: boolean };
+//  - "read": "tôi đang nhìn màn chat, đã xem hết tin tới giờ". App chỉ gửi khi màn chat
+//    đang hiện thật sự (không gửi lúc app chạy nền).
+type ClientEvent = { type: 'message'; text: string } | { type: 'typing'; isTyping: boolean } | { type: 'read' };
+
+// Mốc "đã nhận" và "đã xem" của một người. Tin nào có createdAt <= mốc thì người đó đã nhận / đã xem.
+type Receipt = { userId: string; deliveredAt: number; readAt: number };
 
 export class ChatRoom extends DurableObject<Bindings> {
   constructor(ctx: DurableObjectState, env: Bindings) {
@@ -39,6 +45,13 @@ export class ChatRoom extends DurableObject<Bindings> {
         created_at  INTEGER NOT NULL
       );
       CREATE INDEX IF NOT EXISTS idx_messages_created ON messages (created_at);
+
+      -- Mỗi người trong phòng một dòng: đã nhận tới đâu, đã xem tới đâu.
+      CREATE TABLE IF NOT EXISTS receipts (
+        user_id      TEXT PRIMARY KEY,
+        delivered_at INTEGER NOT NULL DEFAULT 0,
+        read_at      INTEGER NOT NULL DEFAULT 0
+      );
     `);
   }
 
@@ -67,8 +80,12 @@ export class ChatRoom extends DurableObject<Bindings> {
     // vì thông tin này được lưu cùng WebSocket chứ không nằm trong biến của object.
     server.serializeAttachment(member);
 
-    // Vừa vào phòng: gửi ngay lịch sử (50 tin gần nhất) cho riêng người này.
-    server.send(JSON.stringify({ type: 'history', messages: this.recentMessages(50) }));
+    // Mở được phòng nghĩa là tin đã về tới máy người này: tính là "đã nhận".
+    this.markDelivered(member.userId);
+
+    // Vừa vào phòng: gửi ngay lịch sử (50 tin gần nhất) cho riêng người này, kèm mốc đã nhận /
+    // đã xem của mọi người để app biết tin của mình đang ở trạng thái nào.
+    server.send(JSON.stringify({ type: 'history', messages: this.recentMessages(50), receipts: this.receipts() }));
 
     return new Response(null, { status: 101, webSocket: client });
   }
@@ -95,6 +112,19 @@ export class ChatRoom extends DurableObject<Bindings> {
         },
         ws,
       );
+      return;
+    }
+
+    if (event.type === 'read') {
+      // Đã xem thì chắc chắn cũng đã nhận, nên cập nhật cả hai mốc.
+      const now = Date.now();
+      this.ctx.storage.sql.exec(
+        `INSERT INTO receipts (user_id, delivered_at, read_at) VALUES (?1, ?2, ?2)
+         ON CONFLICT (user_id) DO UPDATE SET delivered_at = ?2, read_at = ?2`,
+        sender.userId,
+        now,
+      );
+      this.broadcastReceipt(sender.userId);
       return;
     }
 
@@ -159,12 +189,57 @@ export class ChatRoom extends DurableObject<Bindings> {
           .prepare('UPDATE conversation_members SET unread_count = unread_count + 1 WHERE conversation_id = ?1 AND user_id = ?2')
           .bind(sender.roomId, user_id)
           .run();
+        // Không mở phòng thì gửi thêm thông báo đẩy: app đang chạy nền hay đã tắt hẳn đều nhận được.
+        // Kèm id người gửi để bấm vào thông báo thì app mở đúng màn chat với người đó.
+        await sendPushToUser(this.env, user_id, {
+          title: message.senderName,
+          body: message.text,
+          data: { type: 'chat_message', conversationId: sender.roomId, senderId: message.senderId },
+          threadId: sender.roomId,
+        });
       }
       // Báo cho mọi thiết bị đang mở app của người này (tab Chat tự tải lại).
       await this.env.USER_HUB.get(this.env.USER_HUB.idFromName(user_id))
         .send({ event: 'chat_message', conversationId: sender.roomId, senderName: message.senderName, text: message.text })
         .catch(() => {});
     }
+  }
+
+  /**
+   * Ghi "tin tới giờ đã về tới máy của [userId]" và báo cho cả phòng.
+   * Worker gọi hàm này (RPC) mỗi khi app của người đó tải danh sách chat: app đang mở và vừa
+   * nhận tin mới, hoặc vừa được mở lên.
+   */
+  markDelivered(userId: string) {
+    // Không có tin nào mới hơn mốc cũ thì thôi, khỏi ghi và khỏi báo.
+    const latest = this.ctx.storage.sql
+      .exec<{ at: number | null }>('SELECT MAX(created_at) AS at FROM messages')
+      .one().at;
+    const current = this.receipts().find((r) => r.userId === userId);
+    if (latest === null || (current && current.deliveredAt >= latest)) return;
+
+    this.ctx.storage.sql.exec(
+      `INSERT INTO receipts (user_id, delivered_at) VALUES (?1, ?2)
+       ON CONFLICT (user_id) DO UPDATE SET delivered_at = ?2`,
+      userId,
+      Date.now(),
+    );
+    this.broadcastReceipt(userId);
+  }
+
+  private receipts(): Receipt[] {
+    return this.ctx.storage.sql
+      .exec<{ user_id: string; delivered_at: number; read_at: number }>('SELECT * FROM receipts')
+      .toArray()
+      .map((r) => ({ userId: r.user_id, deliveredAt: r.delivered_at, readAt: r.read_at }));
+  }
+
+  // Báo cho những người KHÁC trong phòng biết mốc mới của [userId].
+  private broadcastReceipt(userId: string) {
+    const receipt = this.receipts().find((r) => r.userId === userId);
+    if (!receipt) return;
+    const except = this.ctx.getWebSockets().filter((ws) => (ws.deserializeAttachment() as Member).userId === userId);
+    this.broadcast({ type: 'receipt', receipt }, except);
   }
 
   /** [limit] tin gần nhất, xếp từ cũ tới mới để app hiện đúng thứ tự. */
@@ -185,14 +260,16 @@ export class ChatRoom extends DurableObject<Bindings> {
   }
 
   async webSocketClose(ws: WebSocket, code: number, reason: string) {
-    ws.close(code, reason);
+    // 1005 / 1006 chỉ là mã để báo, dùng để đóng sẽ ném lỗi; đổi thành 1000 (đóng bình thường).
+    ws.close(code === 1005 || code === 1006 ? 1000 : code, reason);
   }
 
-  /** Gửi một sự kiện cho mọi đường dây đang mở trong phòng, trừ [except] (nếu có). */
-  private broadcast(event: unknown, except?: WebSocket) {
+  /** Gửi một sự kiện cho mọi đường dây đang mở trong phòng, trừ [except] (một hoặc nhiều đường). */
+  private broadcast(event: unknown, except?: WebSocket | WebSocket[]) {
     const data = JSON.stringify(event);
+    const skip = new Set(Array.isArray(except) ? except : except ? [except] : []);
     for (const ws of this.ctx.getWebSockets()) {
-      if (ws === except) continue;
+      if (skip.has(ws)) continue;
       try {
         ws.send(data);
       } catch {

@@ -1,5 +1,6 @@
 import { DurableObject } from 'cloudflare:workers';
 
+import { setPresence } from './lib/presence';
 import type { Bindings } from './types';
 
 /**
@@ -20,8 +21,17 @@ export class UserHub extends DurableObject<Bindings> {
     if (request.headers.get('Upgrade') !== 'websocket') {
       return new Response('Expected a WebSocket upgrade', { status: 426 });
     }
+    // Worker đã kiểm tra token và ghi id người dùng vào header này.
+    const userId = request.headers.get('X-User-Id')!;
+    // Trước khi nhận đường dây mới mà chưa có đường nào: người này vừa chuyển sang "đang hoạt động".
+    const wasOffline = this.openSockets().length === 0;
+
     const { 0: client, 1: server } = new WebSocketPair();
     this.ctx.acceptWebSocket(server);
+    // Gắn id vào đường dây, để lúc đường dây đóng (kể cả sau khi object đã ngủ) vẫn biết là của ai.
+    server.serializeAttachment({ userId });
+
+    if (wasOffline) this.ctx.waitUntil(setPresence(this.env, userId, true));
     return new Response(null, { status: 101, webSocket: client });
   }
 
@@ -40,6 +50,27 @@ export class UserHub extends DurableObject<Bindings> {
   }
 
   async webSocketClose(ws: WebSocket, code: number, reason: string) {
-    ws.close(code, reason);
+    // 1005 ("không có mã") và 1006 ("đứt bất thường") là mã chỉ để BÁO, không được dùng để đóng:
+    // gọi ws.close(1005) sẽ ném lỗi. Gặp hai mã này thì đóng bằng 1000 (bình thường).
+    ws.close(code === 1005 || code === 1006 ? 1000 : code, reason);
+    await this.onSocketGone(ws);
+  }
+
+  async webSocketError(ws: WebSocket) {
+    await this.onSocketGone(ws);
+  }
+
+  // Các đường dây còn mở thật sự (đường đang đóng dở thì không tính).
+  private openSockets(except?: WebSocket) {
+    return this.ctx.getWebSockets().filter((s) => s !== except && s.readyState === WebSocket.OPEN);
+  }
+
+  // Một đường dây vừa mất. Nếu đó là đường cuối cùng (người này đã đóng app trên mọi máy)
+  // thì ghi "rời đi lúc này" và báo cho bạn bè.
+  private async onSocketGone(ws: WebSocket) {
+    const attachment = ws.deserializeAttachment() as { userId?: string } | null;
+    if (!attachment?.userId) return; // đường dây cũ, mở từ trước khi có tính năng này
+    if (this.openSockets(ws).length > 0) return;
+    await setPresence(this.env, attachment.userId, false);
   }
 }

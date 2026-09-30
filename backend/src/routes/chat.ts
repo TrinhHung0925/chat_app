@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 
 import { areFriends } from '../lib/friendship';
+import { toPresence } from '../lib/presence';
 import { findUserById, toPublicUser } from '../lib/user';
 import { requireAuth } from '../middleware/auth';
 import type { AppEnv, UserRow } from '../types';
@@ -65,7 +66,12 @@ type ConversationRow = {
   last_sender_id: string | null;
   last_message_at: number | null;
   unread_count: number;
-} & Pick<UserRow, 'handle' | 'display_name'> & { other_id: string; other_created_at: number };
+} & Pick<UserRow, 'handle' | 'display_name'> & {
+  other_id: string;
+  other_created_at: number;
+  is_online: number;
+  last_seen_at: number | null;
+};
 
 // Danh sách chat của tôi: người đang chat cùng, tin cuối, số chưa đọc; mới nhất lên đầu.
 // Chỉ lấy cuộc trò chuyện đã có ít nhất 1 tin (mở phòng rồi thoát mà không nhắn thì không hiện).
@@ -73,7 +79,8 @@ chatRoutes.get('/conversations', async (c) => {
   const { results } = await c.env.DB.prepare(
     `SELECT conv.id, conv.last_message_text, conv.last_sender_id, conv.last_message_at,
             mine.unread_count,
-            u.id AS other_id, u.handle, u.display_name, u.created_at AS other_created_at
+            u.id AS other_id, u.handle, u.display_name, u.created_at AS other_created_at,
+            u.is_online, u.last_seen_at
      FROM conversation_members mine
      JOIN conversations conv ON conv.id = mine.conversation_id
      JOIN conversation_members other
@@ -86,6 +93,23 @@ chatRoutes.get('/conversations', async (c) => {
     .bind(c.get('userId'))
     .all<ConversationRow>();
 
+  // App vừa tải danh sách = tin mới đã về tới máy mình. Báo "đã nhận" cho những phòng
+  // còn tin chưa đọc (người gửi sẽ thấy "Đã gửi" chuyển thành "Đã nhận").
+  // Chạy sau khi đã trả kết quả (waitUntil), không bắt app phải chờ.
+  const meId = c.get('userId');
+  const pending = results.filter((r) => r.unread_count > 0);
+  if (pending.length > 0) {
+    c.executionCtx.waitUntil(
+      Promise.all(
+        pending.map((r) =>
+          c.env.CHAT_ROOM.get(c.env.CHAT_ROOM.idFromName(r.id))
+            .markDelivered(meId)
+            .catch((e) => console.warn('markDelivered failed', r.id, e)),
+        ),
+      ),
+    );
+  }
+
   return c.json({
     conversations: results.map((r) => ({
       id: r.id,
@@ -94,6 +118,20 @@ chatRoutes.get('/conversations', async (c) => {
       lastSenderId: r.last_sender_id,
       lastMessageAt: r.last_message_at,
       unreadCount: r.unread_count,
+      // Người kia có đang hoạt động không (chấm xanh trên avatar).
+      presence: toPresence(r),
     })),
   });
+});
+
+// Trạng thái hoạt động của một người bạn, cho dòng "Đang hoạt động / Hoạt động X phút trước"
+// trên màn chat. Không phải bạn bè thì không được xem.
+chatRoutes.get('/direct/:userId/presence', async (c) => {
+  const otherId = c.req.param('userId');
+  if (!(await areFriends(c.env.DB, c.get('userId'), otherId))) return c.json({ error: 'not_friends' }, 403);
+  const row = await c.env.DB.prepare('SELECT is_online, last_seen_at FROM users WHERE id = ?1')
+    .bind(otherId)
+    .first<{ is_online: number; last_seen_at: number | null }>();
+  if (!row) return c.json({ error: 'user_not_found' }, 404);
+  return c.json({ presence: toPresence(row) });
 });

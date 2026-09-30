@@ -36,6 +36,14 @@ class ChatRealtimeService {
   Stream<({String userId, String name, bool isTyping})> get typing =>
       _typing.stream;
 
+  // Mốc "đã nhận / đã xem" của một người thay đổi (id người đó, hai mốc thời gian).
+  // Server gửi 1 lần cho mỗi người lúc vừa vào phòng, rồi gửi tiếp mỗi khi mốc đổi.
+  final _receipts = StreamController<
+      ({String userId, int deliveredAt, int readAt})>.broadcast();
+
+  Stream<({String userId, int deliveredAt, int readAt})> get receipts =>
+      _receipts.stream;
+
   // Lúc gần nhất đã báo "đang gõ" lên server, để không gửi mỗi lần gõ một phím.
   DateTime? _lastTypingSentAt;
 
@@ -98,6 +106,14 @@ class ChatRealtimeService {
             .map(ChatMessageModel.fromJson)
             .toList(),
       );
+      for (final r in (event['receipts'] as List? ?? const [])) {
+        _addReceipt(r as Map<String, dynamic>);
+      }
+      return;
+    }
+
+    if (event['type'] == 'receipt') {
+      _addReceipt(event['receipt'] as Map<String, dynamic>);
       return;
     }
 
@@ -115,6 +131,19 @@ class ChatRealtimeService {
         ChatMessageModel.fromJson(event['message'] as Map<String, dynamic>),
       );
     }
+  }
+
+  void _addReceipt(Map<String, dynamic> r) {
+    _receipts.add((
+      userId: r['userId'] as String,
+      deliveredAt: r['deliveredAt'] as int,
+      readAt: r['readAt'] as int,
+    ));
+  }
+
+  // Báo server "tôi đã xem hết tin tới giờ". Chỉ gọi khi màn chat đang hiện trước mắt người dùng.
+  void markRead() {
+    _channel?.sink.add(jsonEncode({'type': 'read'}));
   }
 
   // Mất mạng hoặc server ngắt đường dây.
@@ -163,5 +192,6 @@ class ChatRealtimeService {
     _state.close();
     _history.close();
     _typing.close();
+    _receipts.close();
   }
 }

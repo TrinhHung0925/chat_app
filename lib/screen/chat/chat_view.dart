@@ -108,6 +108,10 @@ class _ChatViewState extends State<ChatView> {
     }
     // reverse: true để tin mới nhất nằm dưới cùng và danh sách tự "dính" đáy.
     final items = controller.messages.reversed.toList();
+    // Đọc 2 mốc ngay tại đây để Obx theo dõi chúng: itemBuilder bên dưới chạy muộn hơn,
+    // đọc trong đó thì Obx không biết, "Đã xem" sẽ không tự hiện.
+    controller.otherDeliveredAt.value;
+    controller.otherReadAt.value;
     return ListView.builder(
       reverse: true,
       padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
@@ -118,8 +122,39 @@ class _ChatViewState extends State<ChatView> {
           if (index == 0) return _buildTypingBubble();
           index--;
         }
-        return _buildBubble(items[index]);
+        final m = items[index];
+        // Chỉ tin cuối cùng mình gửi mới có dòng trạng thái bên dưới, giống Messenger.
+        if (m.id == controller.lastMine?.id) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [_buildBubble(m), _buildStatus(m)],
+          );
+        }
+        return _buildBubble(m);
       },
+    );
+  }
+
+  Widget _buildStatus(ChatMessageModel m) {
+    final (text, icon, color) = switch (controller.statusOf(m)) {
+      MessageStatus.sent => ('Đã gửi', Icons.check, AppColors.textSecondary),
+      MessageStatus.delivered => (
+          'Đã nhận',
+          Icons.done_all,
+          AppColors.textSecondary
+        ),
+      MessageStatus.seen => ('Đã xem', Icons.done_all, AppColors.primary),
+    };
+    return Padding(
+      padding: EdgeInsets.only(right: 4.w, bottom: 2.h),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14.r, color: color),
+          SizedBox(width: 3.w),
+          Text(text, style: AppText.regular(size: 11, color: color)),
+        ],
+      ),
     );
   }
 

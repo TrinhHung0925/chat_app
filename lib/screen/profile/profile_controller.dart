@@ -6,6 +6,7 @@ import '../../model/user_model.dart';
 import '../../route.dart';
 import '../../service/api_service.dart';
 import '../../service/local_service.dart';
+import '../../service/push_service.dart';
 import '../../utils/validators.dart';
 
 class ProfileController extends GetxController {
@@ -57,6 +58,8 @@ class ProfileController extends GetxController {
   }
 
   Future<void> logout() async {
+    // Xóa token push TRƯỚC khi xóa phiên đăng nhập, vì gọi server cần token đăng nhập.
+    await PushService.instance.stop();
     await LocalService.logout();
     Get.offAllNamed(AppPage.login.routeName);
   }

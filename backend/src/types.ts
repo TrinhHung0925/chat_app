@@ -6,6 +6,8 @@ export type Bindings = {
   JWT_SECRET: string;
   USER_HUB: DurableObjectNamespace<UserHub>;
   CHAT_ROOM: DurableObjectNamespace<ChatRoom>;
+  // Nội dung file JSON của service account Firebase (wrangler secret). Thiếu thì không gửi push.
+  FCM_SERVICE_ACCOUNT?: string;
 };
 
 export type Variables = {

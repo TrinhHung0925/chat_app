@@ -3,6 +3,7 @@ import { Hono } from 'hono';
 import { authRoutes } from './routes/auth';
 import { requireAuth } from './middleware/auth';
 import { chatRoutes } from './routes/chat';
+import { deviceRoutes } from './routes/devices';
 import { friendRoutes } from './routes/friends';
 import { notificationRoutes } from './routes/notifications';
 import { postRoutes } from './routes/posts';
@@ -17,13 +18,17 @@ app.route('/friends', friendRoutes);
 app.route('/posts', postRoutes);
 app.route('/notifications', notificationRoutes);
 app.route('/chat', chatRoutes);
+app.route('/devices', deviceRoutes);
 
 // The app keeps one WebSocket open while it is in the foreground. The Worker checks the token,
 // then hands the connection to the caller's own UserHub Durable Object, which keeps it.
 app.get('/ws', requireAuth, async (c) => {
   if (c.req.header('Upgrade') !== 'websocket') return c.json({ error: 'expected_websocket' }, 426);
   const hub = c.env.USER_HUB.get(c.env.USER_HUB.idFromName(c.get('userId')));
-  return hub.fetch(c.req.raw);
+  // Tự đặt header (ghi đè nếu app có gửi), để UserHub biết chắc đường dây này của ai.
+  const headers = new Headers(c.req.raw.headers);
+  headers.set('X-User-Id', c.get('userId'));
+  return hub.fetch(new Request(c.req.raw, { headers }));
 });
 app.route('/', userRoutes);
 

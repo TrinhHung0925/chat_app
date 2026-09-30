@@ -13,6 +13,7 @@ import '../model/user_profile_model.dart';
 import '../route.dart';
 import '../utils/app_config.dart';
 import 'local_service.dart';
+import 'push_service.dart';
 
 class ApiException implements Exception {
   final int? statusCode;
@@ -77,6 +78,8 @@ class ApiService {
               !isAuthCall &&
               LocalService.isLoggedIn) {
             await LocalService.logout();
+            // Token đăng nhập đã hỏng nên không báo server được; chỉ hủy token push trên máy.
+            PushService.instance.stop(notifyServer: false);
             Get.offAllNamed(AppPage.login.routeName);
             Get.snackbar(
               'Phiên đăng nhập đã hết hạn',
@@ -338,5 +341,19 @@ class ApiService {
             .cast<Map<String, dynamic>>()
             .map(ConversationModel.fromJson)
             .toList(),
+      );
+
+  // ---------- Devices (thông báo đẩy) ----------
+
+  // Báo server: máy có FCM [token] này là của tôi, gửi thông báo của tôi tới đây.
+  static Future<void> registerDevice(String token, String platform) => _call(
+        () => _dio.post('/devices', data: {'token': token, 'platform': platform}),
+        (_) {},
+      );
+
+  // Đăng xuất: máy này thôi nhận thông báo của tôi.
+  static Future<void> unregisterDevice(String token) => _call(
+        () => _dio.delete('/devices', data: {'token': token}),
+        (_) {},
       );
 }

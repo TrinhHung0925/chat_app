@@ -6,6 +6,7 @@ import '../../model/notification_model.dart';
 import '../../model/user_model.dart';
 import '../../service/api_service.dart';
 import '../../service/local_service.dart';
+import '../../service/push_service.dart';
 import '../../service/realtime_service.dart';
 import '../chat_list/chat_list_controller.dart';
 import '../feed/feed_controller.dart';
@@ -25,6 +26,8 @@ class HomeController extends GetxController {
     refreshMe();
     // Home exists exactly while the user is signed in, so the live connection follows it.
     RealtimeService.instance.start();
+    // Thông báo đẩy khi app chạy nền hoặc đã tắt. Không dừng ở onClose: chỉ dừng khi đăng xuất.
+    PushService.instance.start();
     _live = RealtimeService.instance.notifications.listen(_onNotification);
   }
 

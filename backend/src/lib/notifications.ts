@@ -1,6 +1,7 @@
 import type { Context } from 'hono';
 
 import type { AppEnv, Bindings, UserRow } from '../types';
+import { sendPushToUser } from './fcm';
 import { toPublicUser } from './user';
 
 export type NotificationType = 'friend_request' | 'friend_accepted';
@@ -78,6 +79,19 @@ export async function createNotification(
     countUnread(db, input.userId),
   ]);
   push(c, input.userId, { event: 'notification', notification: toNotification(row!), unreadCount });
+
+  // Thêm một thông báo đẩy qua Firebase, để hiện lên cả khi app đã tắt hẳn.
+  const name = row!.display_name;
+  c.executionCtx.waitUntil(
+    sendPushToUser(c.env, input.userId, {
+      title: input.type === 'friend_request' ? 'Lời mời kết bạn' : 'Bạn mới',
+      body:
+        input.type === 'friend_request'
+          ? `${name} đã gửi cho bạn lời mời kết bạn`
+          : `${name} đã chấp nhận lời mời kết bạn`,
+      data: { type: 'notification' },
+    }),
+  );
 }
 
 /** Removes the "X sent you a friend request" notification once the request is gone. */
