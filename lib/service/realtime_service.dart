@@ -12,8 +12,6 @@ import '../utils/app_config.dart';
 import 'api_service.dart';
 import 'local_service.dart';
 
-/// Keeps one WebSocket to the backend's UserHub while the user is signed in and the app is
-/// in the foreground. The server pushes events such as a new notification over it.
 class RealtimeService with WidgetsBindingObserver {
   RealtimeService._();
 
@@ -73,9 +71,7 @@ class RealtimeService with WidgetsBindingObserver {
     final token = LocalService.accessToken;
     if (!_running || token == null) return;
 
-    final uri = Uri.parse(
-      '${AppConfig.apiBaseUrl.replaceFirst('http', 'ws')}/ws',
-    );
+    final uri = Uri.parse('${AppConfig.apiBaseUrl.replaceFirst('http', 'ws')}/ws');
     final channel = IOWebSocketChannel.connect(
       uri,
       headers: {'Authorization': 'Bearer $token'},
@@ -91,11 +87,7 @@ class RealtimeService with WidgetsBindingObserver {
     }
     if (_channel != channel) return;
     _attempt = 0;
-    _subscription = channel.stream.listen(
-      _onMessage,
-      onDone: _scheduleRetry,
-      onError: (_) => _scheduleRetry(),
-    );
+    _subscription = channel.stream.listen(_onMessage, onDone: _scheduleRetry, onError: (_) => _scheduleRetry());
   }
 
   /// Waits 1, 2, 4 … up to 30 seconds between attempts, so a server outage is not hammered.
@@ -127,9 +119,7 @@ class RealtimeService with WidgetsBindingObserver {
     if (count is int) unreadCount.value = count;
 
     if (message['event'] == 'notification') {
-      final notification = NotificationModel.fromJson(
-        message['notification'] as Map<String, dynamic>,
-      );
+      final notification = NotificationModel.fromJson(message['notification'] as Map<String, dynamic>);
       _notifications.add(notification);
       _showBanner(notification);
     }
