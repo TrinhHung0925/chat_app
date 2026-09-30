@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import '../dialog/confirm_dialog.dart';
 import '../model/relationship_model.dart';
 import '../model/user_model.dart';
+import '../screen/friends/friends_controller.dart';
 import '../service/api_service.dart';
 
 /// Runs one friend action and returns the new relationship, or null if nothing changed.
@@ -54,7 +55,13 @@ abstract class RelationshipActions {
     Future<RelationshipModel> Function() action,
   ) async {
     try {
-      return await action();
+      final result = await action();
+      // The friends tab lives on in the background (IndexedStack), so refresh it here:
+      // a request accepted from a profile page must also leave the "Lời mời" list.
+      if (Get.isRegistered<FriendsController>()) {
+        Get.find<FriendsController>().load();
+      }
+      return result;
     } catch (e) {
       Get.snackbar('Lỗi', e.toString());
       return null;

@@ -24,6 +24,16 @@ class ChatRealtimeService {
 
   final _state = StreamController<ChatConnectionState>.broadcast();
 
+  // Người kia bắt đầu hoặc thôi gõ: (id người đó, tên, đang gõ hay không).
+  final _typing = StreamController<
+      ({String userId, String name, bool isTyping})>.broadcast();
+
+  Stream<({String userId, String name, bool isTyping})> get typing =>
+      _typing.stream;
+
+  // Lúc gần nhất đã báo "đang gõ" lên server, để không gửi mỗi lần gõ một phím.
+  DateTime? _lastTypingSentAt;
+
   Stream<ChatConnectionState> get state => _state.stream;
 
   bool get isConnected => _channel != null;
@@ -76,6 +86,15 @@ class ChatRealtimeService {
 
     // `type` cho biết đây là loại sự kiện gì. Hiện chỉ có "message";
     // bước 4 sẽ thêm "typing" (đang nhập).
+    if (event['type'] == 'typing') {
+      _typing.add((
+        userId: event['userId'] as String,
+        name: event['displayName'] as String,
+        isTyping: event['isTyping'] as bool,
+      ));
+      return;
+    }
+
     if (event['type'] == 'message') {
       _messages.add(
         ChatMessageModel.fromJson(event['message'] as Map<String, dynamic>),
@@ -93,6 +112,25 @@ class ChatRealtimeService {
   // phát lại cho cả phòng, lúc đó mới chắc chắn là server đã nhận.
   void sendMessage(String text) {
     _channel?.sink.add(jsonEncode({'type': 'message', 'text': text}));
+    _lastTypingSentAt = null;
+  }
+
+  // Gọi mỗi khi ô nhập thay đổi. Đang gõ thì báo lên tối đa 3 giây một lần
+  // (gõ 20 phím chỉ gửi vài tín hiệu, không phải 20); xóa hết chữ thì báo "thôi gõ" ngay.
+  void notifyTyping(bool isTyping) {
+    final now = DateTime.now();
+    if (isTyping) {
+      final last = _lastTypingSentAt;
+      if (last != null && now.difference(last) < const Duration(seconds: 3)) {
+        return;
+      }
+      _lastTypingSentAt = now;
+    } else {
+      // Chưa báo "đang gõ" thì không cần báo "thôi".
+      if (_lastTypingSentAt == null) return;
+      _lastTypingSentAt = null;
+    }
+    _channel?.sink.add(jsonEncode({'type': 'typing', 'isTyping': isTyping}));
   }
 
   // Thoát phòng: thôi nghe và cúp máy (mã 1000 = đóng bình thường).
@@ -108,5 +146,6 @@ class ChatRealtimeService {
     close();
     _messages.close();
     _state.close();
+    _typing.close();
   }
 }

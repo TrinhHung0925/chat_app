@@ -15,7 +15,11 @@ import type { Bindings } from './types';
 type Member = { userId: string; displayName: string };
 
 /** App gửi lên. */
-type ClientEvent = { type: 'message'; text: string };
+// App gửi lên 2 loại sự kiện, phân biệt bằng `type`:
+//  - "message": tin nhắn thật, phát cho cả phòng.
+//  - "typing": đang gõ (isTyping = true) hoặc đã thôi gõ (false). Chỉ báo cho người KHÁC,
+//    không lưu lại, vì vài giây sau nó đã hết ý nghĩa.
+type ClientEvent = { type: 'message'; text: string } | { type: 'typing'; isTyping: boolean };
 
 export class ChatRoom extends DurableObject<Bindings> {
   constructor(ctx: DurableObjectState, env: Bindings) {
@@ -62,6 +66,20 @@ export class ChatRoom extends DurableObject<Bindings> {
       return; // không phải JSON thì bỏ qua
     }
 
+    if (event.type === 'typing') {
+      // Không gửi lại cho chính người đang gõ: bản thân mình không cần thấy "mình đang nhập".
+      this.broadcast(
+        {
+          type: 'typing',
+          userId: sender.userId,
+          displayName: sender.displayName,
+          isTyping: event.isTyping === true,
+        },
+        ws,
+      );
+      return;
+    }
+
     if (event.type === 'message') {
       const text = typeof event.text === 'string' ? event.text.trim() : '';
       if (text.length === 0 || text.length > 2000) return;
@@ -85,10 +103,11 @@ export class ChatRoom extends DurableObject<Bindings> {
     ws.close(code, reason);
   }
 
-  /** Gửi một sự kiện cho mọi đường dây đang mở trong phòng. */
-  private broadcast(event: unknown) {
+  /** Gửi một sự kiện cho mọi đường dây đang mở trong phòng, trừ [except] (nếu có). */
+  private broadcast(event: unknown, except?: WebSocket) {
     const data = JSON.stringify(event);
     for (const ws of this.ctx.getWebSockets()) {
+      if (ws === except) continue;
       try {
         ws.send(data);
       } catch {

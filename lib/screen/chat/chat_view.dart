@@ -65,6 +65,14 @@ class _ChatViewState extends State<ChatView> {
   }
 
   Widget _buildConnectionText() {
+    // Đang kết nối bình thường mà người kia gõ thì ưu tiên hiện "đang nhập...".
+    if (controller.otherIsTyping.value &&
+        controller.connection.value == ChatConnectionState.connected) {
+      return Text(
+        'đang nhập...',
+        style: AppText.regular(size: 12, color: AppColors.primary),
+      );
+    }
     final (text, color) = switch (controller.connection.value) {
       ChatConnectionState.connecting => (
           'Đang kết nối...',
@@ -103,8 +111,33 @@ class _ChatViewState extends State<ChatView> {
     return ListView.builder(
       reverse: true,
       padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
-      itemCount: items.length,
-      itemBuilder: (context, index) => _buildBubble(items[index]),
+      // Khi người kia đang gõ, thêm một ô "..." ở dưới cùng (vị trí 0 vì danh sách bị đảo).
+      itemCount: items.length + (controller.otherIsTyping.value ? 1 : 0),
+      itemBuilder: (context, index) {
+        if (controller.otherIsTyping.value) {
+          if (index == 0) return _buildTypingBubble();
+          index--;
+        }
+        return _buildBubble(items[index]);
+      },
+    );
+  }
+
+  Widget _buildTypingBubble() {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        margin: EdgeInsets.symmetric(vertical: 3.h),
+        padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.circular(16.r),
+        ),
+        child: Text(
+          '${controller.other.displayName} đang nhập...',
+          style: AppText.regular(size: 13, color: AppColors.textSecondary),
+        ),
+      ),
     );
   }
 
