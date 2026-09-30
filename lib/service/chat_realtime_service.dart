@@ -22,6 +22,11 @@ class ChatRealtimeService {
 
   Stream<ChatMessageModel> get messages => _messages.stream;
 
+  // Lịch sử tin nhắn, server gửi 1 lần ngay khi vừa vào phòng (kể cả khi kết nối lại).
+  final _history = StreamController<List<ChatMessageModel>>.broadcast();
+
+  Stream<List<ChatMessageModel>> get history => _history.stream;
+
   final _state = StreamController<ChatConnectionState>.broadcast();
 
   // Người kia bắt đầu hoặc thôi gõ: (id người đó, tên, đang gõ hay không).
@@ -86,6 +91,16 @@ class ChatRealtimeService {
 
     // `type` cho biết đây là loại sự kiện gì. Hiện chỉ có "message";
     // bước 4 sẽ thêm "typing" (đang nhập).
+    if (event['type'] == 'history') {
+      _history.add(
+        (event['messages'] as List)
+            .cast<Map<String, dynamic>>()
+            .map(ChatMessageModel.fromJson)
+            .toList(),
+      );
+      return;
+    }
+
     if (event['type'] == 'typing') {
       _typing.add((
         userId: event['userId'] as String,
@@ -146,6 +161,7 @@ class ChatRealtimeService {
     close();
     _messages.close();
     _state.close();
+    _history.close();
     _typing.close();
   }
 }

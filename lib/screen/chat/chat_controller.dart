@@ -17,6 +17,7 @@ class ChatController extends GetxController {
   final _realtime = ChatRealtimeService();
   StreamSubscription<ChatMessageModel>? _messageSub;
   StreamSubscription<ChatConnectionState>? _stateSub;
+  StreamSubscription<List<ChatMessageModel>>? _historySub;
   StreamSubscription<({String userId, String name, bool isTyping})>? _typingSub;
 
   final messages = <ChatMessageModel>[].obs;
@@ -47,6 +48,8 @@ class ChatController extends GetxController {
       // Người kia đã gửi tin thì chắc chắn họ không còn "đang nhập" nữa.
       if (m.senderId == other.id) _hideTyping();
     });
+    // Lịch sử thay thế toàn bộ danh sách: vào lại phòng hay kết nối lại đều không bị trùng tin.
+    _historySub = _realtime.history.listen(messages.assignAll);
     _typingSub = _realtime.typing.listen((t) {
       if (t.userId != other.id) return;
       if (!t.isTyping) return _hideTyping();
@@ -85,6 +88,7 @@ class ChatController extends GetxController {
     _messageSub?.cancel();
     _stateSub?.cancel();
     _typingSub?.cancel();
+    _historySub?.cancel();
     _typingTimeout?.cancel();
     _realtime.dispose();
     textController.dispose();

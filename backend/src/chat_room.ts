@@ -8,7 +8,8 @@ import type { Bindings } from './types';
  * Mọi người đang mở phòng này đều giữ một WebSocket nối vào CHÍNH object này.
  * Ai gửi tin lên thì object phát tin đó cho tất cả mọi người trong phòng.
  *
- * Bước 2: chỉ nhận và phát tin, chưa lưu lại (bước 5 mới lưu).
+ * Tin nhắn được lưu trong database SQLite riêng của chính object này (this.ctx.storage.sql),
+ * nên mỗi phòng tự giữ lịch sử của mình.
  */
 
 /** Thông tin gắn vào từng WebSocket để biết đường dây này là của ai. */
@@ -26,6 +27,19 @@ export class ChatRoom extends DurableObject<Bindings> {
     super(ctx, env);
     // Server tự trả "pong" khi app gửi "ping", không cần đánh thức object.
     ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('ping', 'pong'));
+
+    // Tạo bảng lưu tin nhắn nếu chưa có. Mỗi phòng có database riêng, nên bảng này
+    // chỉ chứa tin của đúng phòng này.
+    ctx.storage.sql.exec(`
+      CREATE TABLE IF NOT EXISTS messages (
+        id          TEXT PRIMARY KEY,
+        sender_id   TEXT NOT NULL,
+        sender_name TEXT NOT NULL,
+        text        TEXT NOT NULL,
+        created_at  INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_messages_created ON messages (created_at);
+    `);
   }
 
   /** Worker chuyển WebSocket của một người vào phòng qua hàm này. */
@@ -51,6 +65,9 @@ export class ChatRoom extends DurableObject<Bindings> {
     // Gắn thông tin người dùng vào chính đường dây. Object ngủ dậy vẫn đọc lại được,
     // vì thông tin này được lưu cùng WebSocket chứ không nằm trong biến của object.
     server.serializeAttachment(member);
+
+    // Vừa vào phòng: gửi ngay lịch sử (50 tin gần nhất) cho riêng người này.
+    server.send(JSON.stringify({ type: 'history', messages: this.recentMessages(50) }));
 
     return new Response(null, { status: 101, webSocket: client });
   }
@@ -84,19 +101,45 @@ export class ChatRoom extends DurableObject<Bindings> {
       const text = typeof event.text === 'string' ? event.text.trim() : '';
       if (text.length === 0 || text.length > 2000) return;
 
-      // Phát cho TẤT CẢ mọi người trong phòng, kể cả người gửi.
-      // Người gửi nhận lại tin của chính mình nghĩa là "server đã nhận, gửi thành công".
-      this.broadcast({
-        type: 'message',
-        message: {
-          id: crypto.randomUUID(),
-          senderId: sender.userId,
-          senderName: sender.displayName,
-          text,
-          createdAt: Date.now(),
-        },
-      });
+      const message = {
+        id: crypto.randomUUID(),
+        senderId: sender.userId,
+        senderName: sender.displayName,
+        text,
+        createdAt: Date.now(),
+      };
+
+      // 1. Lưu vào database của phòng TRƯỚC, để lỡ có sự cố thì tin cũng không mất.
+      this.ctx.storage.sql.exec(
+        'INSERT INTO messages (id, sender_id, sender_name, text, created_at) VALUES (?, ?, ?, ?, ?)',
+        message.id,
+        message.senderId,
+        message.senderName,
+        message.text,
+        message.createdAt,
+      );
+
+      // 2. Rồi mới phát cho TẤT CẢ mọi người trong phòng, kể cả người gửi.
+      // Người gửi nhận lại tin của chính mình nghĩa là "server đã nhận và đã lưu".
+      this.broadcast({ type: 'message', message });
     }
+  }
+
+  /** [limit] tin gần nhất, xếp từ cũ tới mới để app hiện đúng thứ tự. */
+  private recentMessages(limit: number) {
+    const rows = this.ctx.storage.sql
+      .exec<{ id: string; sender_id: string; sender_name: string; text: string; created_at: number }>(
+        'SELECT * FROM messages ORDER BY created_at DESC LIMIT ?',
+        limit,
+      )
+      .toArray();
+    return rows.reverse().map((r) => ({
+      id: r.id,
+      senderId: r.sender_id,
+      senderName: r.sender_name,
+      text: r.text,
+      createdAt: r.created_at,
+    }));
   }
 
   async webSocketClose(ws: WebSocket, code: number, reason: string) {
