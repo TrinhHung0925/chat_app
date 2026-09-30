@@ -71,9 +71,8 @@ class _NotificationsViewState extends State<NotificationsView> {
       NotificationType.unknown => Icons.notifications,
     };
     return Material(
-      color: n.read
-          ? AppColors.white
-          : AppColors.primary.withValues(alpha: 0.08),
+      color:
+          n.read ? AppColors.white : AppColors.primary.withValues(alpha: 0.08),
       child: ListTile(
         contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 6.h),
         leading: Stack(

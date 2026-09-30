@@ -35,8 +35,9 @@ class NotificationModel {
 
   /// The sentence after the actor's name.
   String get action => switch (type) {
-    NotificationType.friendRequest => 'đã gửi cho bạn lời mời kết bạn',
-    NotificationType.friendAccepted => 'đã chấp nhận lời mời kết bạn của bạn',
-    NotificationType.unknown => 'có hoạt động mới',
-  };
+        NotificationType.friendRequest => 'đã gửi cho bạn lời mời kết bạn',
+        NotificationType.friendAccepted =>
+          'đã chấp nhận lời mời kết bạn của bạn',
+        NotificationType.unknown => 'có hoạt động mới',
+      };
 }

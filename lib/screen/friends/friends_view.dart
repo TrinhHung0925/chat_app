@@ -149,25 +149,25 @@ class _FriendsViewState extends State<FriendsView> {
               child: const CircularProgressIndicator(strokeWidth: 2),
             )
           : incoming
-          ? Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton.filled(
-                  icon: const Icon(Icons.check),
-                  tooltip: 'Chấp nhận',
-                  onPressed: () => controller.accept(request),
+              ? Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton.filled(
+                      icon: const Icon(Icons.check),
+                      tooltip: 'Chấp nhận',
+                      onPressed: () => controller.accept(request),
+                    ),
+                    IconButton.outlined(
+                      icon: const Icon(Icons.close),
+                      tooltip: 'Từ chối',
+                      onPressed: () => controller.decline(request),
+                    ),
+                  ],
+                )
+              : TextButton(
+                  onPressed: () => controller.cancel(request),
+                  child: const Text('Hủy'),
                 ),
-                IconButton.outlined(
-                  icon: const Icon(Icons.close),
-                  tooltip: 'Từ chối',
-                  onPressed: () => controller.decline(request),
-                ),
-              ],
-            )
-          : TextButton(
-              onPressed: () => controller.cancel(request),
-              child: const Text('Hủy'),
-            ),
     );
   }
 

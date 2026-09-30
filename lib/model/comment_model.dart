@@ -16,10 +16,10 @@ class CommentModel {
   });
 
   factory CommentModel.fromJson(Map<String, dynamic> json) => CommentModel(
-    id: json['id'] as String,
-    postId: json['postId'] as String,
-    author: UserModel.fromJson(json['author'] as Map<String, dynamic>),
-    content: json['content'] as String,
-    createdAt: json['createdAt'] as int,
-  );
+        id: json['id'] as String,
+        postId: json['postId'] as String,
+        author: UserModel.fromJson(json['author'] as Map<String, dynamic>),
+        content: json['content'] as String,
+        createdAt: json['createdAt'] as int,
+      );
 }

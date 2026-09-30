@@ -193,9 +193,8 @@ class _PostDetailViewState extends State<PostDetailView> {
             ),
             Obx(
               () => IconButton(
-                onPressed: controller.isSending.value
-                    ? null
-                    : controller.sendComment,
+                onPressed:
+                    controller.isSending.value ? null : controller.sendComment,
                 icon: Icon(Icons.send, color: AppColors.primary, size: 24.r),
               ),
             ),

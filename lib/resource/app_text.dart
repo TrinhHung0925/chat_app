@@ -7,15 +7,18 @@ abstract class AppText {
   static TextStyle regular({
     double size = 14,
     Color color = AppColors.textPrimary,
-  }) => TextStyle(fontSize: size.sp, fontWeight: FontWeight.w400, color: color);
+  }) =>
+      TextStyle(fontSize: size.sp, fontWeight: FontWeight.w400, color: color);
 
   static TextStyle medium({
     double size = 14,
     Color color = AppColors.textPrimary,
-  }) => TextStyle(fontSize: size.sp, fontWeight: FontWeight.w500, color: color);
+  }) =>
+      TextStyle(fontSize: size.sp, fontWeight: FontWeight.w500, color: color);
 
   static TextStyle bold({
     double size = 14,
     Color color = AppColors.textPrimary,
-  }) => TextStyle(fontSize: size.sp, fontWeight: FontWeight.w700, color: color);
+  }) =>
+      TextStyle(fontSize: size.sp, fontWeight: FontWeight.w700, color: color);
 }

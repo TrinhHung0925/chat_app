@@ -51,9 +51,8 @@ class _PostEditorViewState extends State<PostEditorView> {
                       ),
                     )
                   : FilledButton(
-                      onPressed: controller.canSave.value
-                          ? controller.save
-                          : null,
+                      onPressed:
+                          controller.canSave.value ? controller.save : null,
                       child: Text(controller.isEditing ? 'Lưu' : 'Đăng'),
                     ),
             ),

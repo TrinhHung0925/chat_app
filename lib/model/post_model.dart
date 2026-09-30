@@ -24,15 +24,15 @@ class PostModel {
   bool get isEdited => updatedAt != createdAt;
 
   factory PostModel.fromJson(Map<String, dynamic> json) => PostModel(
-    id: json['id'] as String,
-    author: UserModel.fromJson(json['author'] as Map<String, dynamic>),
-    content: json['content'] as String,
-    createdAt: json['createdAt'] as int,
-    updatedAt: json['updatedAt'] as int,
-    likeCount: json['likeCount'] as int,
-    commentCount: json['commentCount'] as int,
-    likedByMe: json['likedByMe'] as bool,
-  );
+        id: json['id'] as String,
+        author: UserModel.fromJson(json['author'] as Map<String, dynamic>),
+        content: json['content'] as String,
+        createdAt: json['createdAt'] as int,
+        updatedAt: json['updatedAt'] as int,
+        likeCount: json['likeCount'] as int,
+        commentCount: json['commentCount'] as int,
+        likedByMe: json['likedByMe'] as bool,
+      );
 
   PostModel copyWith({int? likeCount, int? commentCount, bool? likedByMe}) =>
       PostModel(

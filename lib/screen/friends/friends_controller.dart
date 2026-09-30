@@ -28,12 +28,10 @@ class FriendsController extends GetxController {
         ApiService.getFriendRequests(),
       ]);
       friends.assignAll(results[0] as List<UserModel>);
-      final requests =
-          results[1]
-              as ({
-                List<FriendRequestModel> incoming,
-                List<FriendRequestModel> outgoing,
-              });
+      final requests = results[1] as ({
+        List<FriendRequestModel> incoming,
+        List<FriendRequestModel> outgoing,
+      });
       incoming.assignAll(requests.incoming);
       outgoing.assignAll(requests.outgoing);
     } catch (e) {

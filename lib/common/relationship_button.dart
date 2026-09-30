@@ -55,44 +55,44 @@ class RelationshipButton extends StatelessWidget {
 
     return switch (relationship.status) {
       RelationshipStatus.none => filled(
-        'Kết bạn',
-        Icons.person_add_alt_1,
-        onAdd,
-      ),
+          'Kết bạn',
+          Icons.person_add_alt_1,
+          onAdd,
+        ),
       RelationshipStatus.outgoing => outlined(
-        'Đã gửi lời mời',
-        Icons.schedule_send,
-        onCancel,
-      ),
+          'Đã gửi lời mời',
+          Icons.schedule_send,
+          onCancel,
+        ),
       RelationshipStatus.friends => outlined(
-        'Bạn bè',
-        Icons.how_to_reg,
-        onUnfriend,
-      ),
+          'Bạn bè',
+          Icons.how_to_reg,
+          onUnfriend,
+        ),
       // In a list row there is only room for icons.
       RelationshipStatus.incoming when compact => Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          IconButton.filled(
-            icon: const Icon(Icons.check),
-            tooltip: 'Chấp nhận',
-            onPressed: onAccept,
-          ),
-          IconButton.outlined(
-            icon: const Icon(Icons.close),
-            tooltip: 'Từ chối',
-            onPressed: onDecline,
-          ),
-        ],
-      ),
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton.filled(
+              icon: const Icon(Icons.check),
+              tooltip: 'Chấp nhận',
+              onPressed: onAccept,
+            ),
+            IconButton.outlined(
+              icon: const Icon(Icons.close),
+              tooltip: 'Từ chối',
+              onPressed: onDecline,
+            ),
+          ],
+        ),
       RelationshipStatus.incoming => Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          filled('Chấp nhận', Icons.check, onAccept),
-          SizedBox(width: 8.w),
-          outlined('Từ chối', Icons.close, onDecline),
-        ],
-      ),
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            filled('Chấp nhận', Icons.check, onAccept),
+            SizedBox(width: 8.w),
+            outlined('Từ chối', Icons.close, onDecline),
+          ],
+        ),
       RelationshipStatus.self => const SizedBox.shrink(),
     };
   }
