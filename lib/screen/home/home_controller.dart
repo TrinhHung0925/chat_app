@@ -51,7 +51,7 @@ class HomeController extends GetxController {
       final me = await ApiService.getMe();
       user.value = me;
       await LocalService.saveUser(me);
-    } on ApiException {
+    } catch (_) {
       // Keep the cached user; a 401 is already handled by the Dio interceptor.
     }
   }

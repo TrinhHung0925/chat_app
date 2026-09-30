@@ -47,8 +47,8 @@ class PostDetailController extends GetxController {
       ]);
       post.value = results[0] as PostModel;
       comments.assignAll(results[1] as List<CommentModel>);
-    } on ApiException catch (e) {
-      Get.snackbar('Lỗi', e.message);
+    } catch (e) {
+      Get.snackbar('Lỗi', e.toString());
     } finally {
       isLoading.value = false;
     }
@@ -65,9 +65,9 @@ class PostDetailController extends GetxController {
       post.value = liked
           ? await ApiService.likePost(_postId)
           : await ApiService.unlikePost(_postId);
-    } on ApiException catch (e) {
+    } catch (e) {
       post.value = current;
-      Get.snackbar('Lỗi', e.message);
+      Get.snackbar('Lỗi', e.toString());
     }
   }
 
@@ -82,8 +82,8 @@ class PostDetailController extends GetxController {
         commentCount: post.value!.commentCount + 1,
       );
       commentController.clear();
-    } on ApiException catch (e) {
-      Get.snackbar('Lỗi', e.message);
+    } catch (e) {
+      Get.snackbar('Lỗi', e.toString());
     } finally {
       isSending.value = false;
     }
@@ -103,8 +103,8 @@ class PostDetailController extends GetxController {
       post.value = post.value!.copyWith(
         commentCount: post.value!.commentCount - 1,
       );
-    } on ApiException catch (e) {
-      Get.snackbar('Lỗi', e.message);
+    } catch (e) {
+      Get.snackbar('Lỗi', e.toString());
     }
   }
 
@@ -127,8 +127,8 @@ class PostDetailController extends GetxController {
     try {
       await ApiService.deletePost(_postId);
       Get.back(result: false);
-    } on ApiException catch (e) {
-      Get.snackbar('Lỗi', e.message);
+    } catch (e) {
+      Get.snackbar('Lỗi', e.toString());
     }
   }
 

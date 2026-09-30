@@ -42,8 +42,8 @@ class UserProfileController extends GetxController with PostListMixin {
         posts.clear();
         _nextBefore = null;
       }
-    } on ApiException catch (e) {
-      error.value = e.message;
+    } catch (e) {
+      error.value = e.toString();
     } finally {
       isLoading.value = false;
     }
@@ -56,8 +56,8 @@ class UserProfileController extends GetxController with PostListMixin {
       final page = await ApiService.getUserPosts(userId, before: _nextBefore);
       posts.addAll(page.items);
       _nextBefore = page.nextBefore;
-    } on ApiException catch (e) {
-      Get.snackbar('Lỗi', e.message);
+    } catch (e) {
+      Get.snackbar('Lỗi', e.toString());
     } finally {
       isLoadingMore.value = false;
     }

@@ -33,9 +33,9 @@ mixin PostListMixin on GetxController {
             ? await ApiService.likePost(post.id)
             : await ApiService.unlikePost(post.id),
       );
-    } on ApiException catch (e) {
+    } catch (e) {
       _replace(post);
-      Get.snackbar('Lỗi', e.message);
+      Get.snackbar('Lỗi', e.toString());
     }
   }
 
@@ -58,8 +58,8 @@ mixin PostListMixin on GetxController {
     try {
       await ApiService.deletePost(post.id);
       posts.removeWhere((p) => p.id == post.id);
-    } on ApiException catch (e) {
-      Get.snackbar('Lỗi', e.message);
+    } catch (e) {
+      Get.snackbar('Lỗi', e.toString());
     }
   }
 

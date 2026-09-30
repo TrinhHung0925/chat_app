@@ -36,8 +36,8 @@ class FriendsController extends GetxController {
               });
       incoming.assignAll(requests.incoming);
       outgoing.assignAll(requests.outgoing);
-    } on ApiException catch (e) {
-      Get.snackbar('Lỗi', e.message);
+    } catch (e) {
+      Get.snackbar('Lỗi', e.toString());
     } finally {
       isLoading.value = false;
     }
@@ -49,8 +49,8 @@ class FriendsController extends GetxController {
     try {
       await action();
       await load();
-    } on ApiException catch (e) {
-      Get.snackbar('Lỗi', e.message);
+    } catch (e) {
+      Get.snackbar('Lỗi', e.toString());
     } finally {
       busyIds.remove(id);
     }

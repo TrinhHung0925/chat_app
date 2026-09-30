@@ -39,8 +39,8 @@ class SearchUserController extends GetxController {
       final found = await ApiService.searchUsers(q);
       // Ignore a late answer for an older query.
       if (q == query.value) results.assignAll(found);
-    } on ApiException catch (e) {
-      Get.snackbar('Lỗi', e.message);
+    } catch (e) {
+      Get.snackbar('Lỗi', e.toString());
     } finally {
       isSearching.value = false;
     }

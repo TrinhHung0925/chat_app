@@ -43,8 +43,8 @@ class PostEditorController extends GetxController {
           ? await ApiService.updatePost(editing!.id, content)
           : await ApiService.createPost(content);
       Get.back(result: post);
-    } on ApiException catch (e) {
-      Get.snackbar('Lỗi', e.message);
+    } catch (e) {
+      Get.snackbar('Lỗi', e.toString());
     } finally {
       isSaving.value = false;
     }

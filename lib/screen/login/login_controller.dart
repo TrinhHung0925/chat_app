@@ -28,8 +28,8 @@ class LoginController extends GetxController {
       );
       await LocalService.saveSession(session.accessToken, session.user);
       Get.offAllNamed(AppPage.home.routeName);
-    } on ApiException catch (e) {
-      Get.snackbar('Đăng nhập thất bại', e.message);
+    } catch (e) {
+      Get.snackbar('Đăng nhập thất bại', e.toString());
     } finally {
       isLoading.value = false;
     }

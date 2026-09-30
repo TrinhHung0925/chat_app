@@ -44,8 +44,8 @@ class ProfileController extends GetxController {
       handleController.text = updated.handle;
       await LocalService.saveUser(updated);
       Get.snackbar('Thành công', 'Đã lưu hồ sơ');
-    } on ApiException catch (e) {
-      Get.snackbar('Lỗi', e.message);
+    } catch (e) {
+      Get.snackbar('Lỗi', e.toString());
     } finally {
       isSaving.value = false;
     }

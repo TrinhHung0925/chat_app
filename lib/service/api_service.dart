@@ -2,320 +2,379 @@ import 'package:dio/dio.dart';
 import 'package:get/get.dart' hide Response;
 
 import '../model/comment_model.dart';
-import '../model/friend_request_model.dart';
-import '../model/notification_model.dart';
+import '../model/friend_requests_model.dart';
 import '../model/page_model.dart';
 import '../model/post_model.dart';
 import '../model/relationship_model.dart';
+import '../model/session_model.dart';
 import '../model/user_model.dart';
 import '../model/user_profile_model.dart';
 import '../route.dart';
 import '../utils/app_config.dart';
 import 'local_service.dart';
 
-class ApiException implements Exception {
-  final int? statusCode;
-  final String code;
-
-  ApiException(this.code, [this.statusCode]);
-
-  String get message => switch (code) {
-    'invalid_username' => 'Tên đăng nhập không hợp lệ',
-    'invalid_password' => 'Mật khẩu tối thiểu 6 ký tự',
-    'username_taken' => 'Tên đăng nhập đã có người dùng',
-    'invalid_credentials' => 'Sai tên đăng nhập hoặc mật khẩu',
-    'wrong_current_password' => 'Mật khẩu hiện tại không đúng',
-    'invalid_display_name' => 'Tên hiển thị không hợp lệ',
-    'invalid_handle' => 'Mã không hợp lệ',
-    'invalid_content' => 'Nội dung không được để trống',
-    'not_friends' => 'Hai bạn chưa là bạn bè',
-    'post_not_found' => 'Bài viết không tồn tại hoặc bạn không có quyền xem',
-    'comment_not_found' => 'Bình luận không tồn tại',
-    'user_not_found' => 'Không tìm thấy người dùng',
-    'already_friends' => 'Hai bạn đã là bạn bè',
-    'request_already_sent' => 'Bạn đã gửi lời mời rồi',
-    'request_not_found' => 'Lời mời không còn nữa',
-    'handle_taken' => 'Mã này đã có người dùng',
-    'connectionTimeout' ||
-    'receiveTimeout' ||
-    'connectionError' => 'Không kết nối được máy chủ',
-    _ => 'Có lỗi xảy ra ($code)',
-  };
-
-  @override
-  String toString() => 'ApiException($statusCode, $code)';
-}
-
-typedef Session = ({String accessToken, UserModel user});
-
 class ApiService {
   ApiService._();
 
-  static final Dio _dio =
-      Dio(
-          BaseOptions(
-            baseUrl: AppConfig.apiBaseUrl,
-            connectTimeout: const Duration(seconds: 15),
-            receiveTimeout: const Duration(seconds: 30),
-            contentType: Headers.jsonContentType,
-          ),
-        )
-        ..interceptors.add(
-          InterceptorsWrapper(
-            onRequest: (options, handler) {
-              final token = LocalService.accessToken;
-              if (token != null) {
-                options.headers['Authorization'] = 'Bearer $token';
-              }
-              handler.next(options);
-            },
-            onError: (error, handler) async {
-              // An expired or invalid session: drop it and send the user back to Login.
-              final isAuthCall = error.requestOptions.path.startsWith('/auth/');
-              if (error.response?.statusCode == 401 &&
-                  !isAuthCall &&
-                  LocalService.isLoggedIn) {
-                await LocalService.logout();
-                Get.offAllNamed(AppPage.login.routeName);
-                Get.snackbar(
-                  'Phiên đăng nhập đã hết hạn',
-                  'Vui lòng đăng nhập lại',
-                );
-              }
-              handler.next(error);
-            },
-          ),
-        );
+  static final Dio dio = _createDio();
 
-  static Future<T> _call<T>(
-    Future<Response<dynamic>> Function() request,
-    T Function(dynamic data) parse,
-  ) async {
-    try {
-      final response = await request();
-      return parse(response.data);
-    } on DioException catch (e) {
-      final data = e.response?.data;
-      final code = data is Map && data['error'] is String
-          ? data['error'] as String
-          : e.type.name;
-      throw ApiException(code, e.response?.statusCode);
+  static Dio _createDio() {
+    final dio = Dio(
+      BaseOptions(
+        baseUrl: AppConfig.apiBaseUrl,
+        connectTimeout: const Duration(seconds: 15),
+        receiveTimeout: const Duration(seconds: 30),
+        contentType: Headers.jsonContentType,
+      ),
+    );
+
+    dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) {
+          final token = LocalService.accessToken;
+          if (token != null) {
+            options.headers['Authorization'] = 'Bearer $token';
+          }
+          handler.next(options);
+        },
+        onError: (error, handler) async {
+          final isAuthCall = error.requestOptions.path.startsWith('/auth/');
+          final isUnauthorized = error.response?.statusCode == 401;
+          if (isUnauthorized && !isAuthCall && LocalService.isLoggedIn) {
+            await LocalService.logout();
+            Get.offAllNamed(AppPage.login.routeName);
+            Get.snackbar('Phiên đăng nhập đã hết hạn', 'Vui lòng đăng nhập lại');
+          }
+          handler.next(error);
+        },
+      ),
+    );
+
+    return dio;
+  }
+
+  static String _errorMessage(DioException e) {
+    final data = e.response?.data;
+    final code = data is Map && data['error'] is String
+        ? data['error'] as String
+        : e.type.name;
+
+    switch (code) {
+      case 'invalid_username':
+        return 'Tên đăng nhập không hợp lệ';
+      case 'invalid_password':
+        return 'Mật khẩu tối thiểu 6 ký tự';
+      case 'username_taken':
+        return 'Tên đăng nhập đã có người dùng';
+      case 'invalid_credentials':
+        return 'Sai tên đăng nhập hoặc mật khẩu';
+      case 'wrong_current_password':
+        return 'Mật khẩu hiện tại không đúng';
+      case 'invalid_display_name':
+        return 'Tên hiển thị không hợp lệ';
+      case 'invalid_handle':
+        return 'Mã không hợp lệ';
+      case 'invalid_content':
+        return 'Nội dung không được để trống';
+      case 'not_friends':
+        return 'Hai bạn chưa là bạn bè';
+      case 'post_not_found':
+        return 'Bài viết không tồn tại hoặc bạn không có quyền xem';
+      case 'comment_not_found':
+        return 'Bình luận không tồn tại';
+      case 'user_not_found':
+        return 'Không tìm thấy người dùng';
+      case 'already_friends':
+        return 'Hai bạn đã là bạn bè';
+      case 'request_already_sent':
+        return 'Bạn đã gửi lời mời rồi';
+      case 'request_not_found':
+        return 'Lời mời không còn nữa';
+      case 'handle_taken':
+        return 'Mã này đã có người dùng';
+      case 'connectionTimeout':
+      case 'receiveTimeout':
+      case 'connectionError':
+        return 'Không kết nối được máy chủ';
+      default:
+        return 'Có lỗi xảy ra ($code)';
     }
   }
 
-  static Session _parseSession(dynamic data) => (
-    accessToken: data['accessToken'] as String,
-    user: UserModel.fromJson(data['user'] as Map<String, dynamic>),
-  );
-
-  static UserModel _parseUser(dynamic data) =>
-      UserModel.fromJson(data['user'] as Map<String, dynamic>);
-
-  static Future<Session> register(
+  static Future<SessionModel> register(
     String username,
     String password,
     String displayName,
-  ) => _call(
-    () => _dio.post(
-      '/auth/register',
-      data: {
-        'username': username,
-        'password': password,
-        'displayName': displayName,
-      },
-    ),
-    _parseSession,
-  );
+  ) async {
+    try {
+      final res = await dio.post(
+        '/auth/register',
+        data: {
+          'username': username,
+          'password': password,
+          'displayName': displayName,
+        },
+      );
+      return SessionModel.fromJson(res.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw _errorMessage(e);
+    }
+  }
 
-  static Future<Session> login(String username, String password) => _call(
-    () => _dio.post(
-      '/auth/login',
-      data: {'username': username, 'password': password},
-    ),
-    _parseSession,
-  );
+  static Future<SessionModel> login(String username, String password) async {
+    try {
+      final res = await dio.post(
+        '/auth/login',
+        data: {'username': username, 'password': password},
+      );
+      return SessionModel.fromJson(res.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw _errorMessage(e);
+    }
+  }
 
-  static Future<UserModel> getMe() => _call(() => _dio.get('/me'), _parseUser);
+  static Future<UserModel> getMe() async {
+    try {
+      final res = await dio.get('/me');
+      return UserModel.fromJson(res.data['user'] as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw _errorMessage(e);
+    }
+  }
 
-  /// Sends only the fields that are not null.
   static Future<UserModel> updateProfile({
     String? displayName,
     String? handle,
-  }) => _call(
-    () => _dio.patch(
-      '/me',
-      data: {'displayName': ?displayName, 'handle': ?handle},
-    ),
-    _parseUser,
-  );
+  }) async {
+    try {
+      final body = <String, dynamic>{};
+      if (displayName != null) body['displayName'] = displayName;
+      if (handle != null) body['handle'] = handle;
+
+      final res = await dio.patch('/me', data: body);
+      return UserModel.fromJson(res.data['user'] as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw _errorMessage(e);
+    }
+  }
 
   static Future<void> changePassword(
     String currentPassword,
     String newPassword,
-  ) => _call(
-    () => _dio.put(
-      '/me/password',
-      data: {'currentPassword': currentPassword, 'newPassword': newPassword},
-    ),
-    (_) {},
-  );
+  ) async {
+    try {
+      await dio.put(
+        '/me/password',
+        data: {'currentPassword': currentPassword, 'newPassword': newPassword},
+      );
+    } on DioException catch (e) {
+      throw _errorMessage(e);
+    }
+  }
 
-  // ---------- Users ----------
-
-  static Future<List<UserProfileModel>> searchUsers(String query) => _call(
-    () => _dio.get('/users/search', queryParameters: {'q': query}),
-    (data) => (data['users'] as List)
-        .cast<Map<String, dynamic>>()
-        .map(
-          (json) => UserProfileModel(
-            user: UserModel.fromJson(json),
-            relationship: RelationshipModel.fromJson(
-              json['relationship'] as Map<String, dynamic>,
-            ),
+  static Future<List<UserProfileModel>> searchUsers(String query) async {
+    try {
+      final res = await dio.get('/users/search', queryParameters: {'q': query});
+      final list = res.data['users'] as List;
+      return list.map((item) {
+        final json = item as Map<String, dynamic>;
+        return UserProfileModel(
+          user: UserModel.fromJson(json),
+          relationship: RelationshipModel.fromJson(
+            json['relationship'] as Map<String, dynamic>,
           ),
-        )
-        .toList(),
-  );
+        );
+      }).toList();
+    } on DioException catch (e) {
+      throw _errorMessage(e);
+    }
+  }
 
-  static Future<UserProfileModel> getUserProfile(String userId) => _call(
-    () => _dio.get('/users/$userId'),
-    (data) => UserProfileModel(
-      user: UserModel.fromJson(data['user'] as Map<String, dynamic>),
-      relationship: RelationshipModel.fromJson(
-        data['relationship'] as Map<String, dynamic>,
-      ),
-      friendCount: data['friendCount'] as int,
-      postCount: data['postCount'] as int,
-    ),
-  );
+  static Future<UserProfileModel> getUserProfile(String userId) async {
+    try {
+      final res = await dio.get('/users/$userId');
+      final data = res.data as Map<String, dynamic>;
+      return UserProfileModel(
+        user: UserModel.fromJson(data['user'] as Map<String, dynamic>),
+        relationship: RelationshipModel.fromJson(
+          data['relationship'] as Map<String, dynamic>,
+        ),
+        friendCount: data['friendCount'] as int,
+        postCount: data['postCount'] as int,
+      );
+    } on DioException catch (e) {
+      throw _errorMessage(e);
+    }
+  }
 
-  // ---------- Friends ----------
+  static Future<List<UserModel>> getFriends() async {
+    try {
+      final res = await dio.get('/friends');
+      final list = res.data['friends'] as List;
+      return list.map((e) => UserModel.fromJson(e as Map<String, dynamic>)).toList();
+    } on DioException catch (e) {
+      throw _errorMessage(e);
+    }
+  }
 
-  static Future<List<UserModel>> getFriends() => _call(
-    () => _dio.get('/friends'),
-    (data) => (data['friends'] as List)
-        .cast<Map<String, dynamic>>()
-        .map(UserModel.fromJson)
-        .toList(),
-  );
+  static Future<FriendRequestsModel> getFriendRequests() async {
+    try {
+      final res = await dio.get('/friends/requests');
+      return FriendRequestsModel.fromJson(res.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw _errorMessage(e);
+    }
+  }
 
-  static Future<
-    ({List<FriendRequestModel> incoming, List<FriendRequestModel> outgoing})
-  >
-  getFriendRequests() => _call(() => _dio.get('/friends/requests'), (data) {
-    List<FriendRequestModel> parse(dynamic list) => (list as List)
-        .cast<Map<String, dynamic>>()
-        .map(FriendRequestModel.fromJson)
+  static Future<RelationshipModel> sendFriendRequest(String userId) async {
+    try {
+      final res = await dio.post('/friends/requests', data: {'userId': userId});
+      return RelationshipModel.fromJson(
+        res.data['relationship'] as Map<String, dynamic>,
+      );
+    } on DioException catch (e) {
+      throw _errorMessage(e);
+    }
+  }
+
+  static Future<void> acceptFriendRequest(String requestId) async {
+    try {
+      await dio.post('/friends/requests/$requestId/accept');
+    } on DioException catch (e) {
+      throw _errorMessage(e);
+    }
+  }
+
+  static Future<void> deleteFriendRequest(String requestId) async {
+    try {
+      await dio.delete('/friends/requests/$requestId');
+    } on DioException catch (e) {
+      throw _errorMessage(e);
+    }
+  }
+
+  static Future<void> unfriend(String userId) async {
+    try {
+      await dio.delete('/friends/$userId');
+    } on DioException catch (e) {
+      throw _errorMessage(e);
+    }
+  }
+
+  static PageModel<PostModel> _parsePostPage(dynamic data) {
+    final items = (data['items'] as List)
+        .map((e) => PostModel.fromJson(e as Map<String, dynamic>))
         .toList();
-    return (
-      incoming: parse(data['incoming']),
-      outgoing: parse(data['outgoing']),
-    );
-  });
+    return PageModel(items, data['nextBefore'] as int?);
+  }
 
-  static Future<RelationshipModel> sendFriendRequest(String userId) => _call(
-    () => _dio.post('/friends/requests', data: {'userId': userId}),
-    (data) => RelationshipModel.fromJson(
-      data['relationship'] as Map<String, dynamic>,
-    ),
-  );
-
-  static Future<void> acceptFriendRequest(String requestId) =>
-      _call(() => _dio.post('/friends/requests/$requestId/accept'), (_) {});
-
-  /// Declines an incoming request or cancels an outgoing one.
-  static Future<void> deleteFriendRequest(String requestId) =>
-      _call(() => _dio.delete('/friends/requests/$requestId'), (_) {});
-
-  static Future<void> unfriend(String userId) =>
-      _call(() => _dio.delete('/friends/$userId'), (_) {});
-
-  // ---------- Posts ----------
-
-  static PageModel<PostModel> _parsePostPage(dynamic data) => PageModel(
-    (data['items'] as List)
-        .cast<Map<String, dynamic>>()
-        .map(PostModel.fromJson)
-        .toList(),
-    data['nextBefore'] as int?,
-  );
-
-  static PostModel _parsePost(dynamic data) =>
-      PostModel.fromJson(data['post'] as Map<String, dynamic>);
-
-  static Future<PageModel<PostModel>> getFeed({int? before}) => _call(
-    () => _dio.get('/posts/feed', queryParameters: {'before': ?before}),
-    _parsePostPage,
-  );
+  static Future<PageModel<PostModel>> getFeed({int? before}) async {
+    try {
+      final res = await dio.get(
+        '/posts/feed',
+        queryParameters: {if (before != null) 'before': before},
+      );
+      return _parsePostPage(res.data);
+    } on DioException catch (e) {
+      throw _errorMessage(e);
+    }
+  }
 
   static Future<PageModel<PostModel>> getUserPosts(
     String userId, {
     int? before,
-  }) => _call(
-    () =>
-        _dio.get('/users/$userId/posts', queryParameters: {'before': ?before}),
-    _parsePostPage,
-  );
-
-  static Future<PostModel> getPost(String postId) =>
-      _call(() => _dio.get('/posts/$postId'), _parsePost);
-
-  static Future<PostModel> createPost(String content) =>
-      _call(() => _dio.post('/posts', data: {'content': content}), _parsePost);
-
-  static Future<PostModel> updatePost(String postId, String content) => _call(
-    () => _dio.patch('/posts/$postId', data: {'content': content}),
-    _parsePost,
-  );
-
-  static Future<void> deletePost(String postId) =>
-      _call(() => _dio.delete('/posts/$postId'), (_) {});
-
-  static Future<PostModel> likePost(String postId) =>
-      _call(() => _dio.put('/posts/$postId/like'), _parsePost);
-
-  static Future<PostModel> unlikePost(String postId) =>
-      _call(() => _dio.delete('/posts/$postId/like'), _parsePost);
-
-  // ---------- Comments ----------
-
-  static Future<List<CommentModel>> getComments(String postId) => _call(
-    () => _dio.get('/posts/$postId/comments'),
-    (data) => (data['comments'] as List)
-        .cast<Map<String, dynamic>>()
-        .map(CommentModel.fromJson)
-        .toList(),
-  );
-
-  static Future<CommentModel> createComment(String postId, String content) =>
-      _call(
-        () => _dio.post('/posts/$postId/comments', data: {'content': content}),
-        (data) =>
-            CommentModel.fromJson(data['comment'] as Map<String, dynamic>),
+  }) async {
+    try {
+      final res = await dio.get(
+        '/users/$userId/posts',
+        queryParameters: {if (before != null) 'before': before},
       );
+      return _parsePostPage(res.data);
+    } on DioException catch (e) {
+      throw _errorMessage(e);
+    }
+  }
 
-  static Future<void> deleteComment(String postId, String commentId) =>
-      _call(() => _dio.delete('/posts/$postId/comments/$commentId'), (_) {});
+  static Future<PostModel> getPost(String postId) async {
+    try {
+      final res = await dio.get('/posts/$postId');
+      return PostModel.fromJson(res.data['post'] as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw _errorMessage(e);
+    }
+  }
 
-  // ---------- Notifications ----------
+  static Future<PostModel> createPost(String content) async {
+    try {
+      final res = await dio.post('/posts', data: {'content': content});
+      return PostModel.fromJson(res.data['post'] as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw _errorMessage(e);
+    }
+  }
 
-  static Future<({List<NotificationModel> items, int unreadCount})>
-  getNotifications() => _call(
-    () => _dio.get('/notifications'),
-    (data) => (
-      items: (data['notifications'] as List)
-          .cast<Map<String, dynamic>>()
-          .map(NotificationModel.fromJson)
-          .toList(),
-      unreadCount: data['unreadCount'] as int,
-    ),
-  );
+  static Future<PostModel> updatePost(String postId, String content) async {
+    try {
+      final res = await dio.patch('/posts/$postId', data: {'content': content});
+      return PostModel.fromJson(res.data['post'] as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw _errorMessage(e);
+    }
+  }
 
-  static Future<int> getUnreadNotificationCount() => _call(
-    () => _dio.get('/notifications/unread-count'),
-    (data) => data['unreadCount'] as int,
-  );
+  static Future<void> deletePost(String postId) async {
+    try {
+      await dio.delete('/posts/$postId');
+    } on DioException catch (e) {
+      throw _errorMessage(e);
+    }
+  }
 
-  static Future<void> markAllNotificationsRead() =>
-      _call(() => _dio.post('/notifications/read-all'), (_) {});
+  static Future<PostModel> likePost(String postId) async {
+    try {
+      final res = await dio.put('/posts/$postId/like');
+      return PostModel.fromJson(res.data['post'] as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw _errorMessage(e);
+    }
+  }
+
+  static Future<PostModel> unlikePost(String postId) async {
+    try {
+      final res = await dio.delete('/posts/$postId/like');
+      return PostModel.fromJson(res.data['post'] as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw _errorMessage(e);
+    }
+  }
+
+  static Future<List<CommentModel>> getComments(String postId) async {
+    try {
+      final res = await dio.get('/posts/$postId/comments');
+      final list = res.data['comments'] as List;
+      return list.map((e) => CommentModel.fromJson(e as Map<String, dynamic>)).toList();
+    } on DioException catch (e) {
+      throw _errorMessage(e);
+    }
+  }
+
+  static Future<CommentModel> createComment(String postId, String content) async {
+    try {
+      final res = await dio.post(
+        '/posts/$postId/comments',
+        data: {'content': content},
+      );
+      return CommentModel.fromJson(res.data['comment'] as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw _errorMessage(e);
+    }
+  }
+
+  static Future<void> deleteComment(String postId, String commentId) async {
+    try {
+      await dio.delete('/posts/$postId/comments/$commentId');
+    } on DioException catch (e) {
+      throw _errorMessage(e);
+    }
+  }
 }
