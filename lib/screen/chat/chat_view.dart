@@ -78,10 +78,21 @@ class _ChatViewState extends State<ChatView> {
           'Đang kết nối...',
           AppColors.textSecondary
         ),
-      ChatConnectionState.connected => ('Đã kết nối', Colors.green),
+      // Đã vào phòng: hiện người kia có đang hoạt động không, thay cho chữ "Đã kết nối".
+      ChatConnectionState.connected => _presenceText(),
       ChatConnectionState.disconnected => ('Mất kết nối', Colors.red),
     };
     return Text(text, style: AppText.regular(size: 12, color: color));
+  }
+
+  (String, Color) _presenceText() {
+    controller.clock.value; // đọc để Obx vẽ lại mỗi 30 giây ("5 phút" → "6 phút")
+    final p = controller.presence.value;
+    if (p == null) return ('', AppColors.textSecondary);
+    return (
+      p.label ?? '',
+      p.online ? Colors.green : AppColors.textSecondary,
+    );
   }
 
   Widget _buildMessages() {

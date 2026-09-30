@@ -60,6 +60,11 @@ export class UserHub extends DurableObject<Bindings> {
     await this.onSocketGone(ws);
   }
 
+  /** Cron gọi (RPC) để kiểm tra lại: người này còn mở app trên máy nào không. */
+  async isOnline(): Promise<boolean> {
+    return this.openSockets().length > 0;
+  }
+
   // Các đường dây còn mở thật sự (đường đang đóng dở thì không tính).
   private openSockets(except?: WebSocket) {
     return this.ctx.getWebSockets().filter((s) => s !== except && s.readyState === WebSocket.OPEN);

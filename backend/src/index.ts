@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 
+import { scheduled } from './cron';
 import { authRoutes } from './routes/auth';
 import { requireAuth } from './middleware/auth';
 import { chatRoutes } from './routes/chat';
@@ -8,7 +9,7 @@ import { friendRoutes } from './routes/friends';
 import { notificationRoutes } from './routes/notifications';
 import { postRoutes } from './routes/posts';
 import { userRoutes } from './routes/users';
-import type { AppEnv } from './types';
+import type { AppEnv, Bindings } from './types';
 
 const app = new Hono<AppEnv>();
 
@@ -40,4 +41,5 @@ app.onError((err, c) => {
 export { ChatRoom } from './chat_room';
 export { UserHub } from './hub';
 
-export default app;
+// Worker có 2 "cửa vào": fetch (app gọi API) và scheduled (Cloudflare gọi theo lịch cron).
+export default { fetch: app.fetch, scheduled } satisfies ExportedHandler<Bindings>;

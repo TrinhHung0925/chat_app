@@ -7,6 +7,7 @@ import 'package:get/get.dart';
 import 'package:web_socket_channel/io.dart';
 
 import '../model/notification_model.dart';
+import '../model/presence_model.dart';
 import '../route.dart';
 import '../utils/app_config.dart';
 import 'api_service.dart';
@@ -27,6 +28,13 @@ class RealtimeService with WidgetsBindingObserver {
   final _chatUpdates = StreamController<String>.broadcast();
 
   Stream<String> get chatUpdates => _chatUpdates.stream;
+
+  // Một người bạn vừa mở app hoặc vừa rời app: (id người đó, trạng thái mới).
+  final _presence =
+      StreamController<({String userId, PresenceModel presence})>.broadcast();
+
+  Stream<({String userId, PresenceModel presence})> get presence =>
+      _presence.stream;
 
   IOWebSocketChannel? _channel;
   StreamSubscription<dynamic>? _subscription;
@@ -128,6 +136,14 @@ class RealtimeService with WidgetsBindingObserver {
     // ChatRoom báo qua UserHub khi có tin nhắn mới cho mình.
     if (message['event'] == 'chat_message') {
       _chatUpdates.add(message['conversationId'] as String);
+      return;
+    }
+
+    if (message['event'] == 'presence') {
+      _presence.add((
+        userId: message['userId'] as String,
+        presence: PresenceModel.fromJson(message),
+      ));
       return;
     }
 

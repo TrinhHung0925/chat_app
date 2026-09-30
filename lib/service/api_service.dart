@@ -7,6 +7,7 @@ import '../model/friend_request_model.dart';
 import '../model/notification_model.dart';
 import '../model/page_model.dart';
 import '../model/post_model.dart';
+import '../model/presence_model.dart';
 import '../model/relationship_model.dart';
 import '../model/user_model.dart';
 import '../model/user_profile_model.dart';
@@ -341,6 +342,13 @@ class ApiService {
             .cast<Map<String, dynamic>>()
             .map(ConversationModel.fromJson)
             .toList(),
+      );
+
+  // Người bạn [userId] có đang hoạt động không (cho dòng chữ dưới tên trên màn chat).
+  static Future<PresenceModel> getPresence(String userId) => _call(
+        () => _dio.get('/chat/direct/$userId/presence'),
+        (data) =>
+            PresenceModel.fromJson(data['presence'] as Map<String, dynamic>),
       );
 
   // ---------- Devices (thông báo đẩy) ----------

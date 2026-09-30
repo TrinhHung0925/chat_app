@@ -6,6 +6,15 @@
   "compatibility_flags": ["nodejs_compat"],
   "observability": { "enabled": true },
 
+  // Cron Triggers: Cloudflare tự chạy hàm `scheduled` (src/cron.ts) theo lịch, giờ UTC.
+  // Chuỗi ở đây phải khớp CRON_CLEANUP / CRON_PRESENCE trong src/cron.ts.
+  "triggers": {
+    "crons": [
+      "0 20 * * *",   // 3 giờ sáng giờ VN: dọn thông báo cũ, token push chết
+      "*/15 * * * *"  // 15 phút một lần: sửa người bị kẹt "đang hoạt động"
+    ]
+  },
+
   "durable_objects": {
     "bindings": [
       { "name": "USER_HUB", "class_name": "UserHub" },

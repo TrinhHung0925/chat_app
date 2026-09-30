@@ -61,8 +61,7 @@ class _ChatListViewState extends State<ChatListView> {
     final prefix = c.lastSenderId == controller.meId ? 'Bạn: ' : '';
     return ListTile(
       contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
-      leading:
-          UserAvatar(userId: c.other.id, name: c.other.displayName, size: 50),
+      leading: _buildAvatar(c),
       title: Text(
         c.other.displayName,
         style: unread ? AppText.bold(size: 16) : AppText.medium(size: 16),
@@ -92,6 +91,32 @@ class _ChatListViewState extends State<ChatListView> {
         ],
       ),
       onTap: () => controller.open(c),
+    );
+  }
+
+  // Avatar kèm chấm xanh ở góc dưới bên phải khi người kia đang hoạt động.
+  Widget _buildAvatar(ConversationModel c) {
+    final avatar =
+        UserAvatar(userId: c.other.id, name: c.other.displayName, size: 50);
+    if (!c.presence.online) return avatar;
+    return Stack(
+      children: [
+        avatar,
+        Positioned(
+          right: 0,
+          bottom: 0,
+          child: Container(
+            width: 14.r,
+            height: 14.r,
+            decoration: BoxDecoration(
+              color: Colors.green,
+              shape: BoxShape.circle,
+              // Viền trắng để chấm tách khỏi màu avatar.
+              border: Border.all(color: AppColors.white, width: 2.r),
+            ),
+          ),
+        ),
+      ],
     );
   }
 

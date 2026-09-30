@@ -4,9 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../model/chat_message_model.dart';
+import '../../model/presence_model.dart';
 import '../../model/user_model.dart';
+import '../../service/api_service.dart';
 import '../../service/chat_realtime_service.dart';
 import '../../service/local_service.dart';
+import '../../service/realtime_service.dart';
 
 // Trạng thái tin cuối cùng mình gửi, hiện ngay dưới tin đó.
 enum MessageStatus { sent, delivered, seen }
@@ -29,6 +32,13 @@ class ChatController extends GetxController with WidgetsBindingObserver {
   // Mốc của người kia: tin nào của mình gửi lúc <= mốc thì họ đã nhận / đã xem.
   final otherDeliveredAt = 0.obs;
   final otherReadAt = 0.obs;
+
+  // Người kia có đang hoạt động không. null = chưa tải xong.
+  final presence = Rxn<PresenceModel>();
+  StreamSubscription<({String userId, PresenceModel presence})>? _presenceSub;
+  // Cứ 30 giây tăng 1 lần, chỉ để màn hình vẽ lại dòng "Hoạt động X phút trước".
+  final clock = 0.obs;
+  Timer? _clockTimer;
 
   final messages = <ChatMessageModel>[].obs;
   final connection = ChatConnectionState.connecting.obs;
@@ -105,7 +115,23 @@ class ChatController extends GetxController with WidgetsBindingObserver {
     });
     _stateSub = _realtime.state.listen((s) => connection.value = s);
 
+    // Trạng thái hoạt động: tải 1 lần lúc mở màn, sau đó UserHub báo trực tiếp mỗi khi đổi.
+    loadPresence();
+    _presenceSub = RealtimeService.instance.presence.listen((p) {
+      if (p.userId == other.id) presence.value = p.presence;
+    });
+    _clockTimer =
+        Timer.periodic(const Duration(seconds: 30), (_) => clock.value++);
+
     connect();
+  }
+
+  Future<void> loadPresence() async {
+    try {
+      presence.value = await ApiService.getPresence(other.id);
+    } on ApiException {
+      // Không quan trọng: không có thì chỉ không hiện dòng trạng thái.
+    }
   }
 
   Future<void> connect() async {
@@ -119,7 +145,11 @@ class ChatController extends GetxController with WidgetsBindingObserver {
   // Quay lại app khi màn chat vẫn đang mở: những tin tới lúc chạy nền giờ mới được xem.
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) _realtime.markRead();
+    if (state == AppLifecycleState.resumed) {
+      _realtime.markRead();
+      // Lúc chạy nền app không nghe được UserHub, nên tải lại cho chắc.
+      loadPresence();
+    }
   }
 
   void _hideTyping() {
@@ -142,6 +172,8 @@ class ChatController extends GetxController with WidgetsBindingObserver {
     _typingSub?.cancel();
     _historySub?.cancel();
     _receiptSub?.cancel();
+    _presenceSub?.cancel();
+    _clockTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _typingTimeout?.cancel();
     _realtime.dispose();
