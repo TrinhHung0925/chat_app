@@ -7,10 +7,17 @@
   "observability": { "enabled": true },
 
   "durable_objects": {
-    "bindings": [{ "name": "USER_HUB", "class_name": "UserHub" }]
+    "bindings": [
+      { "name": "USER_HUB", "class_name": "UserHub" },
+      { "name": "CHAT_ROOM", "class_name": "ChatRoom" }
+    ]
   },
   // The Free plan only allows SQLite-backed Durable Objects, hence new_sqlite_classes.
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["UserHub"] }],
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["UserHub"] },
+    // Mỗi class Durable Object mới cần một migration mới (tag khác) để Cloudflare đăng ký nó.
+    { "tag": "v2", "new_sqlite_classes": ["ChatRoom"] }
+  ],
 
   "d1_databases": [
     {

@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 
 import { authRoutes } from './routes/auth';
 import { requireAuth } from './middleware/auth';
+import { chatRoutes } from './routes/chat';
 import { friendRoutes } from './routes/friends';
 import { notificationRoutes } from './routes/notifications';
 import { postRoutes } from './routes/posts';
@@ -15,6 +16,7 @@ app.route('/auth', authRoutes);
 app.route('/friends', friendRoutes);
 app.route('/posts', postRoutes);
 app.route('/notifications', notificationRoutes);
+app.route('/chat', chatRoutes);
 
 // The app keeps one WebSocket open while it is in the foreground. The Worker checks the token,
 // then hands the connection to the caller's own UserHub Durable Object, which keeps it.
@@ -30,6 +32,7 @@ app.onError((err, c) => {
   return c.json({ error: 'internal_error' }, 500);
 });
 
+export { ChatRoom } from './chat_room';
 export { UserHub } from './hub';
 
 export default app;

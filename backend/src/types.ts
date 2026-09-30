@@ -1,9 +1,11 @@
+import type { ChatRoom } from './chat_room';
 import type { UserHub } from './hub';
 
 export type Bindings = {
   DB: D1Database;
   JWT_SECRET: string;
   USER_HUB: DurableObjectNamespace<UserHub>;
+  CHAT_ROOM: DurableObjectNamespace<ChatRoom>;
 };
 
 export type Variables = {
