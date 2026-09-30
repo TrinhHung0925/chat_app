@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import 'model/post_model.dart';
+import 'model/user_model.dart';
+import 'screen/chat/chat_view.dart';
 import 'screen/home/home_view.dart';
 import 'screen/login/login_view.dart';
 import 'screen/notifications/notifications_view.dart';
@@ -55,6 +57,11 @@ Route<dynamic> generateRoute(RouteSettings settings) {
         settings,
         () => PostEditorView(post: settings.arguments as PostModel?),
       );
+    case "/chat":
+      return page(
+        settings,
+        () => ChatView(other: settings.arguments as UserModel, tag: tag),
+      );
     case "/notifications":
       return page(settings, () => NotificationsView());
     case "/postDetail":
@@ -85,6 +92,7 @@ enum AppPage {
   postEditor,
   postDetail,
   notifications,
+  chat,
 }
 
 extension AppPageExtension on AppPage {
@@ -110,6 +118,8 @@ extension AppPageExtension on AppPage {
         return '/${AppPage.postDetail.name}';
       case AppPage.notifications:
         return '/${AppPage.notifications.name}';
+      case AppPage.chat:
+        return '/${AppPage.chat.name}';
     }
   }
 }

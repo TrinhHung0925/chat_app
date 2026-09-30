@@ -88,6 +88,11 @@ class UserProfileController extends GetxController with PostListMixin {
   void unfriend() =>
       _apply(() => RelationshipActions.unfriend(profile.value!.user));
 
+  // Chỉ bạn bè mới chat được (backend cũng kiểm tra lại điều này).
+  void openChat() {
+    Get.toNamed(AppPage.chat.routeName, arguments: profile.value!.user);
+  }
+
   Future<void> editProfile() async {
     await Get.toNamed(AppPage.profile.routeName);
     await load();

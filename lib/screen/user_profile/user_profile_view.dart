@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import '../../common/post_card.dart';
 import '../../common/relationship_button.dart';
 import '../../common/user_avatar.dart';
+import '../../model/relationship_model.dart';
 import '../../resource/app_colors.dart';
 import '../../resource/app_text.dart';
 import 'user_profile_controller.dart';
@@ -136,14 +137,26 @@ class _UserProfileViewState extends State<UserProfileView> {
               label: const Text('Chỉnh sửa hồ sơ'),
             )
           else
-            RelationshipButton(
-              relationship: info.relationship,
-              isBusy: controller.isBusy.value,
-              onAdd: controller.addFriend,
-              onCancel: controller.cancelRequest,
-              onAccept: controller.acceptRequest,
-              onDecline: controller.declineRequest,
-              onUnfriend: controller.unfriend,
+            Wrap(
+              spacing: 8.w,
+              alignment: WrapAlignment.center,
+              children: [
+                RelationshipButton(
+                  relationship: info.relationship,
+                  isBusy: controller.isBusy.value,
+                  onAdd: controller.addFriend,
+                  onCancel: controller.cancelRequest,
+                  onAccept: controller.acceptRequest,
+                  onDecline: controller.declineRequest,
+                  onUnfriend: controller.unfriend,
+                ),
+                if (info.relationship.status == RelationshipStatus.friends)
+                  FilledButton.icon(
+                    onPressed: controller.openChat,
+                    icon: const Icon(Icons.chat_bubble_outline),
+                    label: const Text('Nhắn tin'),
+                  ),
+              ],
             ),
         ],
       ),
